@@ -114,8 +114,7 @@ func main() {
 					Address:    "https://theattic.us/api",
 					Payload:    true,
 				}
-				filesWatchCall := srv.Files.Watch(file.Id, channel)
-				channel, err := filesWatchCall.Do()
+				channel, err := srv.Files.Watch(file.Id, channel).Do()
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
@@ -130,7 +129,7 @@ func main() {
 func startHTTPListener() {
 	router := mux.NewRouter()
 	fmt.Println("starting http listener...")
-	router.PathPrefix("").Subrouter().HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("req: %v\n", r)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
