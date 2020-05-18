@@ -91,10 +91,9 @@ func main() {
 	}
 
 	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
-	h := r.Header.Get("Content-Type")
-	fmt.Printf("h: %v\n", h)
 	if err != nil {
-		log.Fatalf("Unable to retrieve files: %v", err)
+		fmt.Printf("Unable to retrieve files: %v", err)
+		os.Exit(1)
 	}
 	if len(r.Files) == 0 {
 		fmt.Println("No files found.")
