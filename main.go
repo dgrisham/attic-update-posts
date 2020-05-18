@@ -109,13 +109,13 @@ func main() {
 					Type:       "web_hook",
 					Address:    "https://theattic.us/api",
 				}
-				go startHTTPListener()
 				filesWatchCall := srv.Files.Watch(file.Id, channel)
 				channel, err := filesWatchCall.Do()
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
 				fmt.Printf("channel: %v\n", channel)
+				startHTTPListener()
 			}
 		}
 	}
