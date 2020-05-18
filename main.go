@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -105,17 +106,29 @@ func main() {
 					Kind:       "api#channel",
 					Id:         generateHash(10),
 					ResourceId: file.Id,
-					Type:       "api",
+					Type:       "web_hook",
+					Address:    "https://theattic.us/api",
 				}
 				filesWatchCall := srv.Files.Watch(file.Id, channel)
 				channel, err := filesWatchCall.Do()
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
-					os.Exit(1)
 				}
 				fmt.Printf("channel: %v\n", channel)
+				startHTTPListener()
 			}
 		}
+	}
+}
+
+func startHTTPListener() {
+	router := mux.NewRouter()
+	router.PathPrefix("").Subrouter().HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("req: %v\n", r)
+	})
+	if err := http.ListenAndServe(":9000", router); err != nil {
+		fmt.Printf("error starting http listener: %v\n", err)
+		os.Exit(1)
 	}
 }
 
