@@ -104,7 +104,9 @@ func main() {
 		fmt.Println("No files found.")
 		os.Exit(1)
 	} else {
+		fmt.Printf("HERE 1")
 		for _, file := range r.Files {
+			fmt.Printf("HERE 2")
 			if file.Name == "attic-posts" {
 				channel := &drive.Channel{
 					Kind:       "api#channel",
@@ -113,8 +115,11 @@ func main() {
 					Type:       "web_hook",
 					Address:    "https://theattic.us/api",
 				}
+				fmt.Printf("HERE 3")
 				filesWatchCall := srv.Files.Watch(file.Id, channel)
+				fmt.Printf("HERE 4")
 				channel, err := filesWatchCall.Do()
+				fmt.Printf("HERE 5")
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
