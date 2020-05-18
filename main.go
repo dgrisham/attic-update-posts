@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -87,17 +89,42 @@ func main() {
 		log.Fatalf("Unable to retrieve Drive client: %v", err)
 	}
 
-	r, err := srv.Files.List().PageSize(10).
-		Fields("nextPageToken, files(id, name)").Do()
+	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+	h := r.Header.Get("Content-Type")
+	fmt.Printf("h: %v\n", h)
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
 	}
-	fmt.Println("Files:")
 	if len(r.Files) == 0 {
 		fmt.Println("No files found.")
+		os.Exit(1)
 	} else {
-		for _, i := range r.Files {
-			fmt.Printf("%s (%s)\n", i.Name, i.Id)
+		for _, file := range r.Files {
+			if file.Name == "attic-posts" {
+				channel := &drive.Channel{
+					Kind:       "api#channel",
+					Id:         generateHash(10),
+					ResourceId: file.Id,
+					Type:       "api",
+				}
+				filesWatchCall := srv.Files.Watch(file.Id, channel)
+				channel, err := filesWatchCall.Do()
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("channel: %v\n", channel)
+			}
 		}
 	}
+}
+
+func generateHash(length int) string {
+	pool := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	rand.Seed(time.Now().UTC().UnixNano())
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = pool[rand.Intn(len(pool))]
+	}
+	return string(b)
 }
