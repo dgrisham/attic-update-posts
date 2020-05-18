@@ -109,13 +109,13 @@ func main() {
 					Type:       "web_hook",
 					Address:    "https://theattic.us/api",
 				}
+				go startHTTPListener()
 				filesWatchCall := srv.Files.Watch(file.Id, channel)
 				channel, err := filesWatchCall.Do()
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
 				fmt.Printf("channel: %v\n", channel)
-				startHTTPListener()
 			}
 		}
 	}
@@ -123,6 +123,7 @@ func main() {
 
 func startHTTPListener() {
 	router := mux.NewRouter()
+	fmt.Println("starting http listener...")
 	router.PathPrefix("").Subrouter().HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("req: %v\n", r)
 	})
