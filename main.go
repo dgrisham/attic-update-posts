@@ -112,6 +112,7 @@ func main() {
 					ResourceId: file.Id,
 					Type:       "web_hook",
 					Address:    "https://theattic.us/api",
+					Payload:    true,
 				}
 				filesWatchCall := srv.Files.Watch(file.Id, channel)
 				channel, err := filesWatchCall.Do()
