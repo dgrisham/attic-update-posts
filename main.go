@@ -114,7 +114,8 @@ func main() {
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 				}
-				fmt.Printf("channel: %v\n", channel)
+				fmt.Printf("channel.ServerResponse: %v\n", channel.ServerResponse)
+				fmt.Printf("channel.ServerResponse.Header: %v\n", channel.ServerResponse.Header)
 				startHTTPListener()
 			}
 		}
