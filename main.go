@@ -142,13 +142,13 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		contentChange := false
+		postChanged := false
 		for _, change := range strings.Split(r.Header.Get("X-Goog-Changed"), ",") {
-			if change == "content" {
-				contentChange = true
+			if change == "content" || change == "properties" {
+				postChanged = true
 			}
 		}
-		if !contentChange {
+		if !postChanged {
 			return
 		}
 
