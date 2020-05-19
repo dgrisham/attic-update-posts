@@ -100,6 +100,7 @@ func main() {
 	} else {
 		for _, file := range r.Files {
 			if file.Name == "attic-posts" {
+				logrus.WithField("file", file).Info("File info")
 				channel := &drive.Channel{
 					Kind:       "api#channel",
 					Id:         generateHash(10),
