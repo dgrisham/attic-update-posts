@@ -73,6 +73,7 @@ func saveToken(path string, token *oauth2.Token) {
 }
 
 func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
 		logrus.Fatalf("Unable to read client secret file: %v", err)
