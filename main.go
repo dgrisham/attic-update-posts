@@ -118,7 +118,7 @@ func main() {
 	}
 }
 
-func startHTTPListener() {
+func startHTTPListener(posts map[string]Post) {
 	router := mux.NewRouter()
 	fmt.Println("starting http listener...")
 	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +127,7 @@ func startHTTPListener() {
 			logrus.WithError(err).Error("Error reading request body")
 			return
 		}
+
 		state := r.Header.Get("X-Goog-Resource-State")
 		if state != "update" {
 			return
@@ -135,7 +136,15 @@ func startHTTPListener() {
 		logrus.WithFields(logrus.Fields{
 			"header": r.Header,
 			"body":   body,
-		}).Info("Have update")
+		}).Debug("Have update")
+
+		id := r.Header.Get("X-Goog-Resource-Id")
+		post, ok := posts[id]
+		if !ok {
+			logrus.WithField("id", id).Error("resource ID not found for post update")
+		}
+
+		logrus.WithField("post", post).Info("Received update notification for post")
 
 		return
 	})
