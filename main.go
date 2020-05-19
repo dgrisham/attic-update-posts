@@ -127,10 +127,16 @@ func startHTTPListener() {
 			logrus.WithError(err).Error("Error reading request body")
 			return
 		}
+		state := r.Header.Get("X-Goog-Resource-State")
+		if state != "update" {
+			return
+		}
+
 		logrus.WithFields(logrus.Fields{
 			"header": r.Header,
 			"body":   body,
-		}).Info("Have request")
+		}).Info("Have update")
+
 		return
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
