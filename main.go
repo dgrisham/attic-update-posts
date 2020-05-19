@@ -127,7 +127,10 @@ func startHTTPListener() {
 			logrus.WithError(err).Error("Error reading request body")
 			return
 		}
-		logrus.WithField("body", body).Info("Have request")
+		logrus.WithFields(logrus.Fields{
+			"header": r.Header,
+			"body":   body,
+		}).Info("Have request")
 		return
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
