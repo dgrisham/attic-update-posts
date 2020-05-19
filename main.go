@@ -141,8 +141,10 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
+		logrus.Info("reading changes")
 		contentChange := false
 		for _, change := range r.Header.Values("X-Goog-Changed") {
+			logrus.WithField("change", change).Info("Have change")
 			if change == "content" {
 				contentChange = true
 			}
