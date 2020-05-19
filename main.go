@@ -170,7 +170,7 @@ func startHTTPListener(posts map[string]Post) {
 		return
 	})
 
-	router.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/stop", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Received request to stop all listener channels")
 		status := http.StatusOK
 		for _, post := range posts {
