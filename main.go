@@ -131,7 +131,7 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		state := r.Header.Get("X-Goog-Channel-ID")
+		state := r.Header.Get("X-Goog-Channel-State")
 		if state != "update" {
 			return
 		}
@@ -141,7 +141,7 @@ func startHTTPListener(posts map[string]Post) {
 			"body":   body,
 		}).Debug("Have update")
 
-		id := r.Header.Get("X-Goog-Resource-Id")
+		id := r.Header.Get("X-Goog-Channel-ID")
 		post, ok := posts[id]
 		if !ok {
 			logrus.WithField("id", id).Error("resource ID not found for post update")
