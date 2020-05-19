@@ -112,7 +112,7 @@ func main() {
 						posts[postFile.Id] = post
 					}
 				}
-				startHTTPListener()
+				startHTTPListener(posts)
 			}
 		}
 	}
