@@ -122,7 +122,6 @@ func startHTTPListener() {
 	router := mux.NewRouter()
 	fmt.Println("starting http listener...")
 	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		logrus.WithField("req", r).Info("Have response from Google Drive API")
 		w.WriteHeader(http.StatusOK)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
