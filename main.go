@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -138,6 +139,17 @@ func startHTTPListener(posts map[string]Post) {
 
 		state := r.Header.Get("X-Goog-Channel-State")
 		if state != "update" {
+			return
+		}
+
+		changes := strings.Split(r.Header.Get("X-Goog-Changed"), ", ")
+		contentChange := false
+		for _, change := range changes {
+			if change == "content" {
+				contentChange = true
+			}
+		}
+		if !contentChange {
 			return
 		}
 
