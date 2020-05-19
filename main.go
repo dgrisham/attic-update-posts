@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -141,10 +142,8 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		logrus.Info("reading changes")
 		contentChange := false
-		for _, change := range r.Header.Values("X-Goog-Changed") {
-			logrus.WithField("change", change).Info("Have change")
+		for _, change := range strings.Split(r.Header.Get("X-Goog-Changed"), ",") {
 			if change == "content" {
 				contentChange = true
 			}
