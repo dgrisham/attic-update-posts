@@ -23,7 +23,10 @@ type Post struct {
 	Date     string
 	Filename string
 	FileID   string
+	Channel  *drive.Channel
 }
+
+var srv *drive.Service
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
@@ -40,7 +43,7 @@ func main() {
 	}
 	client := getClient(config)
 
-	srv, err := drive.New(client)
+	srv, err = drive.New(client)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
@@ -108,6 +111,7 @@ func main() {
 							Date:     date.Name,
 							Filename: postFile.Name,
 							FileID:   postFile.Id,
+							Channel:  returnedChannel,
 						}
 						logrus.WithFields(logrus.Fields{
 							"channel id": returnedChannel.Id,
@@ -164,6 +168,19 @@ func startHTTPListener(posts map[string]Post) {
 		logrus.WithField("post", post).Info("Received update notification for post")
 
 		return
+	})
+
+	router.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Received request to stop all listener channels")
+		status := http.StatusOK
+		for _, post := range posts {
+			if err := srv.Channels.Stop(post.Channel).Do(); err != nil {
+				logrus.WithError(err).Error("Error stopping channel")
+				status = http.StatusInternalServerError
+			}
+		}
+		w.WriteHeader(status)
+		os.Exit(0)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
 		logrus.WithError(err).Fatal("error starting http listener")
