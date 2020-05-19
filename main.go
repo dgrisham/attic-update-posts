@@ -21,6 +21,7 @@ type Post struct {
 	Author   string
 	Date     string
 	Filename string
+	FileID   string
 }
 
 func main() {
@@ -86,16 +87,17 @@ func main() {
 
 						postFile := postFiles.Files[0]
 
+						channelID := generateHash(10)
 						channel := &drive.Channel{
 							Kind:       "api#channel",
-							Id:         generateHash(10),
+							Id:         channelID,
 							ResourceId: postFile.Id,
 							Type:       "web_hook",
 							Address:    "https://theattic.us/api",
 							Payload:    true,
 						}
 
-						_, err = srv.Files.Watch(postFile.Id, channel).Do()
+						returnedChannel, err := srv.Files.Watch(postFile.Id, channel).Do()
 						if err != nil {
 							logrus.WithError(err).Error("error subscribing to post file changes")
 						}
@@ -104,12 +106,13 @@ func main() {
 							Author:   author.Name,
 							Date:     date.Name,
 							Filename: postFile.Name,
+							FileID:   postFile.Id,
 						}
 						logrus.WithFields(logrus.Fields{
-							"id":   postFile.Id,
-							"post": post,
+							"channel id": returnedChannel.Id,
+							"post":       post,
 						}).Info("Have post")
-						posts[postFile.Id] = post
+						posts[returnedChannel.Id] = post
 					}
 				}
 				startHTTPListener(posts)
@@ -128,7 +131,7 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		state := r.Header.Get("X-Goog-Resource-State")
+		state := r.Header.Get("X-Goog-Channel-ID")
 		if state != "update" {
 			return
 		}
@@ -142,6 +145,7 @@ func startHTTPListener(posts map[string]Post) {
 		post, ok := posts[id]
 		if !ok {
 			logrus.WithField("id", id).Error("resource ID not found for post update")
+			return
 		}
 
 		logrus.WithField("post", post).Info("Received update notification for post")
