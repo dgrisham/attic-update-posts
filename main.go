@@ -131,6 +131,7 @@ func startHTTPListener() {
 	fmt.Println("starting http listener...")
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("req: %v\n", r)
+		w.WriteHeader(http.StatusOK)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
 		fmt.Printf("error starting http listener: %v\n", err)
