@@ -137,7 +137,7 @@ func startHTTPListener(posts map[string]Post) {
 			"body":   body,
 		}).Debug("Have request")
 
-		state := r.Header.Get("X-Goog-Channel-State")
+		state := r.Header.Get("X-Goog-Resource-State")
 		if state != "update" {
 			return
 		}
