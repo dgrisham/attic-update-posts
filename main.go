@@ -39,12 +39,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
-		logrus.Fatalf("Unable to read authorization code %v", err)
+		logrus.WithError(err).Fatal("Unable to read authorization c")
 	}
 
 	tok, err := config.Exchange(context.TODO(), authCode)
 	if err != nil {
-		logrus.Fatalf("Unable to retrieve token from web %v", err)
+		logrus.WithError(err).Fatal("Unable to retrieve token from ")
 	}
 	return tok
 }
@@ -66,7 +66,7 @@ func saveToken(path string, token *oauth2.Token) {
 	logrus.Infof("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		logrus.Fatalf("Unable to cache oauth token: %v", err)
+		logrus.WithError(err).Fatal("Unable to cache oauth tok")
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
@@ -76,27 +76,27 @@ func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
-		logrus.Fatalf("Unable to read client secret file: %v", err)
+		logrus.WithError(err).Fatal("Unable to read client secret file")
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
 	if err != nil {
-		logrus.Fatalf("Unable to parse client secret file to config: %v", err)
+		logrus.WithError(err).Fatal("Unable to parse client secret file to conf")
 	}
 	client := getClient(config)
 
 	srv, err := drive.New(client)
 	if err != nil {
-		logrus.Fatalf("Unable to retrieve Drive client: %v", err)
+		logrus.WithError(err).Fatal("Unable to retrieve Drive clie")
 	}
 
 	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		logrus.Fatalf("Unable to retrieve files: %v", err)
+		logrus.WithError(err).Fatal("Unable to retrieve fil")
 	}
 	if len(r.Files) == 0 {
-		logrus.Fatalf("No files found.")
+		logrus.Fatal("No files found.")
 	} else {
 		for _, file := range r.Files {
 			if file.Name == "attic-posts" {
@@ -110,7 +110,7 @@ func main() {
 				}
 				channel, err := srv.Files.Watch(file.Id, channel).Do()
 				if err != nil {
-					logrus.Infof("error: %v\n", err)
+					logrus.WithError(err).Error("error")
 				}
 				logrus.Infof("channel.ServerResponse: %v\n", channel.ServerResponse)
 				logrus.Infof("channel.ServerResponse.Header: %v\n", channel.ServerResponse.Header)
@@ -124,11 +124,11 @@ func startHTTPListener() {
 	router := mux.NewRouter()
 	fmt.Println("starting http listener...")
 	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Infof("req: %v\n", r)
+		logrus.WithField("req", r).Info("Have response from Google Drive API")
 		w.WriteHeader(http.StatusOK)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
-		logrus.Fatalf("error starting http listener: %v\n", err)
+		logrus.WithError(err).Fatal("error starting http listener")
 	}
 }
 
