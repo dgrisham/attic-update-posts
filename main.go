@@ -180,6 +180,7 @@ func startHTTPListener(posts map[string]Post) {
 			}
 		}
 		w.WriteHeader(status)
+		logrus.Info("Exiting...")
 		os.Exit(0)
 	})
 	if err := http.ListenAndServe(":9000", router); err != nil {
