@@ -131,15 +131,17 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
+		logrus.WithFields(logrus.Fields{
+			"header": r.Header,
+			"body":   body,
+		}).Debug("Have request")
+
 		state := r.Header.Get("X-Goog-Channel-State")
 		if state != "update" {
 			return
 		}
 
-		logrus.WithFields(logrus.Fields{
-			"header": r.Header,
-			"body":   body,
-		}).Debug("Have update")
+		logrus.Info("Handling update request")
 
 		id := r.Header.Get("X-Goog-Channel-ID")
 		post, ok := posts[id]
