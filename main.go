@@ -17,6 +17,127 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
+type Post struct {
+	Author   string
+	Date     string
+	Filename string
+}
+
+func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
+	logrus.SetLevel(logrus.InfoLevel)
+	b, err := ioutil.ReadFile("credentials.json")
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to read client secret file")
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to parse client secret file to conf")
+	}
+	client := getClient(config)
+
+	srv, err := drive.New(client)
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
+	}
+
+	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to retrieve file list")
+	}
+	if len(r.Files) == 0 {
+		logrus.Fatal("No files found.")
+	} else {
+		for _, file := range r.Files {
+			if file.Name == "attic-posts" {
+				posts := make(map[string]Post)
+				authorFolders, err := srv.Files.List().
+					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
+					PageSize(100).Fields("nextPageToken, files(id, name)").Do()
+				if err != nil {
+					logrus.WithError(err).Fatal("Error listing author folders")
+				}
+				for _, author := range authorFolders.Files {
+					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
+					dateFolders, err := srv.Files.List().
+						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
+						PageSize(100).Fields("nextPageToken, files(id, name)").Do()
+					if err != nil {
+						logrus.WithError(err).WithField("author", author).Fatal("Error listing author post folders")
+					}
+
+					for _, date := range dateFolders.Files {
+						logrus.WithField("date", date.Name).Debug("Retrieving posts for author")
+						postFiles, err := srv.Files.List().
+							Q(fmt.Sprintf("(mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document') and '%s' in parents and trashed = false", date.Id)).
+							PageSize(1).Fields("nextPageToken, files(id, name)").Do()
+						if err != nil {
+							logrus.WithError(err).Fatal("Error retrieving post file")
+						}
+
+						if len(postFiles.Files) != 1 {
+							logrus.WithFields(logrus.Fields{
+								"actual":   len(postFiles.Files),
+								"expected": 1,
+							}).Error("Unexpected number of post files")
+						}
+
+						postFile := postFiles.Files[0]
+
+						channel := &drive.Channel{
+							Kind:       "api#channel",
+							Id:         generateHash(10),
+							ResourceId: postFile.Id,
+							Type:       "web_hook",
+							Address:    "https://theattic.us/api",
+							Payload:    true,
+						}
+
+						_, err = srv.Files.Watch(postFile.Id, channel).Do()
+						if err != nil {
+							logrus.WithError(err).Error("error subscribing to post file changes")
+						}
+
+						post := Post{
+							Author:   author.Name,
+							Date:     date.Name,
+							Filename: postFile.Name,
+						}
+						logrus.WithFields(logrus.Fields{
+							"id":   postFile.Id,
+							"post": post,
+						}).Info("Have post")
+						posts[postFile.Id] = post
+					}
+				}
+				startHTTPListener()
+			}
+		}
+	}
+}
+
+func startHTTPListener() {
+	router := mux.NewRouter()
+	fmt.Println("starting http listener...")
+	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			logrus.WithError(err).Error("Error reading request body")
+			return
+		}
+		logrus.WithFields(logrus.Fields{
+			"header": r.Header,
+			"body":   body,
+		}).Info("Have request")
+		return
+	})
+	if err := http.ListenAndServe(":9000", router); err != nil {
+		logrus.WithError(err).Fatal("error starting http listener")
+	}
+}
+
 // Retrieve a token, saves the token, then returns the generated client.
 func getClient(config *oauth2.Config) *http.Client {
 	// The file token.json stores the user's access and refresh tokens, and is
@@ -70,73 +191,6 @@ func saveToken(path string, token *oauth2.Token) {
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
-}
-
-func main() {
-	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	b, err := ioutil.ReadFile("credentials.json")
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to read client secret file")
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to parse client secret file to conf")
-	}
-	client := getClient(config)
-
-	srv, err := drive.New(client)
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
-	}
-
-	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve file list")
-	}
-	if len(r.Files) == 0 {
-		logrus.Fatal("No files found.")
-	} else {
-		for _, file := range r.Files {
-			if file.Name == "attic-posts" {
-				logrus.WithField("file", file).Info("File info")
-				channel := &drive.Channel{
-					Kind:       "api#channel",
-					Id:         generateHash(10),
-					ResourceId: file.Id,
-					Type:       "web_hook",
-					Address:    "https://theattic.us/api",
-					Payload:    true,
-				}
-				channel, err := srv.Files.Watch(file.Id, channel).Do()
-				if err != nil {
-					logrus.WithError(err).Error("error watching drive files")
-				}
-				startHTTPListener()
-			}
-		}
-	}
-}
-
-func startHTTPListener() {
-	router := mux.NewRouter()
-	fmt.Println("starting http listener...")
-	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			logrus.WithError(err).Error("Error reading request body")
-			return
-		}
-		logrus.WithFields(logrus.Fields{
-			"header": r.Header,
-			"body":   body,
-		}).Info("Have request")
-		return
-	})
-	if err := http.ListenAndServe(":9000", router); err != nil {
-		logrus.WithError(err).Fatal("error starting http listener")
-	}
 }
 
 func generateHash(length int) string {
