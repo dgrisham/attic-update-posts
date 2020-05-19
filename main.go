@@ -34,17 +34,17 @@ func getClient(config *oauth2.Config) *http.Client {
 // Request a token from the web, then returns the retrieved token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	logrus.Infof("Go to the following link in your browser then type the "+
+	fmt.Printf("Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
-		logrus.WithError(err).Fatal("Unable to read authorization c")
+		logrus.WithError(err).Fatal("Unable to read authorization code")
 	}
 
 	tok, err := config.Exchange(context.TODO(), authCode)
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve token from ")
+		logrus.WithError(err).Fatal("Unable to retrieve token from file")
 	}
 	return tok
 }
@@ -63,7 +63,7 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
-	logrus.Infof("Saving credential file to: %s\n", path)
+	logrus.WithField("path", path).Info("Saving credential file")
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to cache oauth tok")
@@ -88,12 +88,12 @@ func main() {
 
 	srv, err := drive.New(client)
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve Drive clie")
+		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
 
 	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve fil")
+		logrus.WithError(err).Fatal("Unable to retrieve file list")
 	}
 	if len(r.Files) == 0 {
 		logrus.Fatal("No files found.")
@@ -110,10 +110,8 @@ func main() {
 				}
 				channel, err := srv.Files.Watch(file.Id, channel).Do()
 				if err != nil {
-					logrus.WithError(err).Error("error")
+					logrus.WithError(err).Error("error watching drive files")
 				}
-				logrus.Infof("channel.ServerResponse: %v\n", channel.ServerResponse)
-				logrus.Infof("channel.ServerResponse.Header: %v\n", channel.ServerResponse.Header)
 				startHTTPListener()
 			}
 		}
