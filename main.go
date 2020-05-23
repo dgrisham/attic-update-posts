@@ -92,10 +92,11 @@ func main() {
 						postFile := postFiles.Files[0]
 
 						channelID := generateHash(10)
+						expiration := time.Now().Add(time.Duration(5)*time.Minute).UnixNano() / 1000000
 						channel := &drive.Channel{
 							Kind:       "api#channel",
 							Id:         channelID,
-							Expiration: time.Now().Add(time.Duration(5) * time.Minute).Unix(),
+							Expiration: expiration,
 							ResourceId: postFile.Id,
 							Type:       "web_hook",
 							Address:    "https://theattic.us/api",
