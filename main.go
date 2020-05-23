@@ -247,12 +247,11 @@ func downloadDriveFile(post Post) error {
 		return err
 	}
 
-	log.WithField("status code", resp.StatusCode).Info("HTTP STATUS DEBUGGGGG")
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err := fmt.Errorf("Got non-2XX status code from google drive")
 		log.WithFields(logrus.Fields{
 			"status code": resp.StatusCode,
-			"body":        body,
+			"body":        string(body),
 		}).Error(err)
 		return err
 	}
