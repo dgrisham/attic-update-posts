@@ -247,6 +247,15 @@ func downloadDriveFile(post Post) error {
 		return err
 	}
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err := fmt.Errorf("Got non-2XX status code from google drive")
+		log.WithFields(logrus.Fields{
+			"status code": resp.StatusCode,
+			"body":        body,
+		}).Error(err)
+		return err
+	}
+
 	log.Info("Saving updated file locally")
 
 	postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
