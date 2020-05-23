@@ -48,7 +48,7 @@ func main() {
 	startHTTPListener(posts)
 }
 
-func subscribeToPosts() map[string]Post {
+func subscribeToPosts() map[string]*Post {
 	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve file list")
@@ -59,7 +59,7 @@ func subscribeToPosts() map[string]Post {
 	} else {
 		for _, file := range r.Files {
 			if file.Name == "attic-posts" {
-				posts := make(map[string]Post)
+				posts := make(map[string]*Post)
 				authorFolders, err := srv.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
 					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
@@ -123,7 +123,7 @@ func subscribeToPosts() map[string]Post {
 							logrus.WithError(err).Error("error subscribing to post file changes")
 						}
 
-						post := Post{
+						post := &Post{
 							Author:      author.Name,
 							Date:        date.Name,
 							Filename:    postFile.Name,
@@ -149,7 +149,7 @@ func subscribeToPosts() map[string]Post {
 	return nil
 }
 
-func startHTTPListener(posts map[string]Post) {
+func startHTTPListener(posts map[string]*Post) {
 	router := mux.NewRouter()
 	logrus.Info("Starting http listener...")
 
@@ -161,7 +161,7 @@ func startHTTPListener(posts map[string]Post) {
 	}
 }
 
-func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http.Request) {
+func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -218,7 +218,7 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		downloadDriveFile(post)
+		downloadDriveFile(*post)
 
 		return
 	}
@@ -252,7 +252,7 @@ func downloadDriveFile(post Post) {
 	return
 }
 
-func HandleStop(posts map[string]Post) func(w http.ResponseWriter, r *http.Request) {
+func HandleStop(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Received request to stop all listener channels")
 
