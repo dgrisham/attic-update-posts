@@ -194,10 +194,11 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 		id := r.Header.Get("X-Goog-Channel-ID")
 		post, ok := posts[id]
 		if !ok {
-			logrus.WithField("id", id).Error("resource ID not found for post update")
+			logrus.WithField("id", id).Error("Channel ID not found for post update")
 			return
 		}
 
+		logrus.Info("Grabbing lock...")
 		post.lock.Lock()
 		defer post.lock.Unlock()
 
@@ -222,7 +223,7 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 
 func downloadDriveFile(post Post) {
 	log := logrus.WithField("post", post)
-	log.Info("Handling update request")
+	log.Info("Downloading updated post from Google Drive")
 
 	req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
 	if err != nil {
