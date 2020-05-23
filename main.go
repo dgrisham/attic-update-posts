@@ -196,12 +196,10 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 			return
 		}
 
-		logrus.Info("Grabbing lock...")
 		post.lock.Lock()
-		logrus.Info("Have lock")
 		defer post.lock.Unlock()
 
-		if post.LastUpdated.After(time.Now().Add(time.Duration(-1) * time.Minute)) {
+		if post.LastUpdated.After(time.Now().Add(-time.Duration(1) * time.Minute)) { // post was updated in the last minute
 			logrus.WithField("post", post).Debug("Post has been updated in the last minute, skipping")
 			return
 		}
