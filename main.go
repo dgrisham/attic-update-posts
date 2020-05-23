@@ -251,8 +251,8 @@ func downloadDriveFile(post Post) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err := fmt.Errorf("Got non-2XX status code from google drive")
 
-		var jsonBody interface{}
-		err2 := json.Unmarshal(body, jsonBody)
+		var jsonBody map[string]interface{}
+		err2 := json.Unmarshal(body, &jsonBody)
 		if err2 != nil {
 			log.WithError(err2).Error("Error unmarshalling json error")
 			return err
