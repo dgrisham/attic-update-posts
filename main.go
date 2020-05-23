@@ -59,7 +59,7 @@ func main() {
 				posts := make(map[string]Post)
 				authorFolders, err := srv.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
@@ -92,7 +92,7 @@ func main() {
 						postFile := postFiles.Files[0]
 
 						channelID := generateHash(10)
-						expiration := time.Now().Add(time.Duration(5)*time.Minute).UnixNano() / 1000000
+						expiration := time.Now().Add(time.Duration(1)*time.Minute).UnixNano() / 1000000
 						channel := &drive.Channel{
 							Kind:       "api#channel",
 							Id:         channelID,
