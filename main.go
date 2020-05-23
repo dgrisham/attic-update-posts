@@ -95,6 +95,7 @@ func main() {
 						channel := &drive.Channel{
 							Kind:       "api#channel",
 							Id:         channelID,
+							Expiration: time.Now().Add(time.Duration(5) * time.Minute).Unix(),
 							ResourceId: postFile.Id,
 							Type:       "web_hook",
 							Address:    "https://theattic.us/api",
