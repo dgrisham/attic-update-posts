@@ -18,9 +18,9 @@ var srv *drive.Service
 
 type driveFileGetError struct {
 	Error struct {
-		Code    int `json:"code"`
-		Errors  []string
-		Message string
+		Code    int           `json:"code"`
+		Errors  []interface{} `json:"errors"`
+		Message string        `json:"message"`
 	} `json:"error"`
 }
 

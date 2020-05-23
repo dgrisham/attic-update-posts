@@ -254,7 +254,7 @@ func downloadDriveFile(post Post) error {
 		var getError driveFileGetError
 		err2 := json.Unmarshal(body, &getError)
 		if err2 != nil {
-			log.WithError(err2).Error("Error unmarshalling json error")
+			log.WithError(err2).Error("Error unmarshalling json body into error")
 			return err
 		}
 
