@@ -139,23 +139,23 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		// state := r.Header.Get("X-Goog-Resource-State")
-		// if state != "change" {
-		// 	return
-		// }
+		state := r.Header.Get("X-Goog-Resource-State")
+		if state != "update" {
+			return
+		}
 
 		logrus.WithFields(logrus.Fields{
 			"header": r.Header,
 			"body":   body,
 		}).Debug("Have request")
 
-		postChanged := false
+		var changes []string
 		for _, change := range strings.Split(r.Header.Get("X-Goog-Changed"), ",") {
 			if change == "content" || change == "properties" {
-				postChanged = true
+				changes = append(changes, change)
 			}
 		}
-		if !postChanged {
+		if len(changes) == 0 {
 			return
 		}
 
@@ -168,7 +168,11 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		logrus.WithField("post", post).Info("Received update notification for post")
+		logrus.WithFields(logrus.Fields{
+			"state":   state,
+			"changes": changes,
+			"post":    post,
+		}).Info("Received update notification for post")
 
 		return
 	})
