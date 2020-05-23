@@ -163,6 +163,8 @@ func startHTTPListener(posts map[string]Post) {
 
 func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Have request from google drive")
+
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			logrus.WithError(err).Error("Error reading request body")
