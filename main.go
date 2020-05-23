@@ -29,7 +29,7 @@ var srv *drive.Service
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to read client secret file")
