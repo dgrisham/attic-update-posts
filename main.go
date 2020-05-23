@@ -129,6 +129,7 @@ func subscribeToPosts() map[string]Post {
 							Filename:    postFile.Name,
 							LastUpdated: time.Now(),
 							Channel:     returnedChannel,
+							lock:        new(sync.Mutex),
 						}
 
 						logrus.WithFields(logrus.Fields{
