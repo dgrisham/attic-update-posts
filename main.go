@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -15,10 +16,12 @@ import (
 )
 
 type Post struct {
-	Author   string
-	Date     string
-	Filename string
-	Channel  *drive.Channel
+	Author      string
+	Date        string
+	Filename    string
+	LastUpdated time.Time
+	Channel     *drive.Channel
+	lock        *sync.Mutex
 }
 
 func main() {
@@ -121,10 +124,11 @@ func subscribeToPosts() map[string]Post {
 						}
 
 						post := Post{
-							Author:   author.Name,
-							Date:     date.Name,
-							Filename: postFile.Name,
-							Channel:  returnedChannel,
+							Author:      author.Name,
+							Date:        date.Name,
+							Filename:    postFile.Name,
+							LastUpdated: time.Now(),
+							Channel:     returnedChannel,
 						}
 
 						logrus.WithFields(logrus.Fields{
@@ -190,6 +194,16 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 			logrus.WithField("id", id).Error("resource ID not found for post update")
 			return
 		}
+
+		post.lock.Lock()
+		defer post.lock.Unlock()
+
+		if post.LastUpdated.After(time.Now().Add(time.Duration(-1) * time.Minute)) {
+			logrus.WithField("post", post).Debug("Post has been updated in the last minute, skipping")
+			return
+		}
+
+		post.LastUpdated = time.Now()
 
 		logrus.WithFields(logrus.Fields{
 			"state":   state,
