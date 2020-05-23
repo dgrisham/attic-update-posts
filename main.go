@@ -22,7 +22,6 @@ type Post struct {
 	Author   string
 	Date     string
 	Filename string
-	FileID   string
 	Channel  *drive.Channel
 }
 
@@ -60,10 +59,11 @@ func main() {
 				posts := make(map[string]Post)
 				authorFolders, err := srv.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
+
 				for _, author := range authorFolders.Files {
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
 					dateFolders, err := srv.Files.List().
@@ -110,13 +110,14 @@ func main() {
 							Author:   author.Name,
 							Date:     date.Name,
 							Filename: postFile.Name,
-							FileID:   postFile.Id,
 							Channel:  returnedChannel,
 						}
+
 						logrus.WithFields(logrus.Fields{
 							"channel id": returnedChannel.Id,
 							"post":       post,
 						}).Info("Have post")
+
 						posts[returnedChannel.Id] = post
 					}
 				}
@@ -142,7 +143,7 @@ func startHTTPListener(posts map[string]Post) {
 		}).Debug("Have request")
 
 		state := r.Header.Get("X-Goog-Resource-State")
-		if state != "update" {
+		if state != "update" { // TODO: change to "change"
 			return
 		}
 
