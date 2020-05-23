@@ -137,15 +137,15 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
+		state := r.Header.Get("X-Goog-Resource-State")
+		if state != "change" {
+			return
+		}
+
 		logrus.WithFields(logrus.Fields{
 			"header": r.Header,
 			"body":   body,
 		}).Debug("Have request")
-
-		state := r.Header.Get("X-Goog-Resource-State")
-		if state != "update" { // TODO: change to "change"
-			return
-		}
 
 		postChanged := false
 		for _, change := range strings.Split(r.Header.Get("X-Goog-Changed"), ",") {
