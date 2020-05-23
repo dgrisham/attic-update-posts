@@ -139,10 +139,10 @@ func startHTTPListener(posts map[string]Post) {
 			return
 		}
 
-		state := r.Header.Get("X-Goog-Resource-State")
-		if state != "change" {
-			return
-		}
+		// state := r.Header.Get("X-Goog-Resource-State")
+		// if state != "change" {
+		// 	return
+		// }
 
 		logrus.WithFields(logrus.Fields{
 			"header": r.Header,
