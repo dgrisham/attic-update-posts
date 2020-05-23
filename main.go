@@ -138,6 +138,10 @@ func subscribeToPosts() map[string]*Post {
 						}).Info("Have post")
 
 						posts[returnedChannel.Id] = post
+
+						if err := downloadDriveFile(*post); err != nil {
+							logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
+						}
 					}
 				}
 
@@ -199,13 +203,7 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 		post.lock.Lock()
 		defer post.lock.Unlock()
 
-		oneMinAgo := time.Now().Add(-time.Duration(1) * time.Minute)
-		logrus.WithFields(logrus.Fields{
-			"last updated": post.LastUpdated,
-			"oneMinAgo":    oneMinAgo,
-			"time.Now()":   time.Now(),
-		}).Debug("TIMESSSSSSSSS")
-		if post.LastUpdated.After(oneMinAgo) { // post was updated in the last minute
+		if post.LastUpdated.After(time.Now().Add(-time.Duration(1) * time.Minute)) { // post was updated in the last minute
 			logrus.WithField("post", post).Debug("Post has been updated in the last minute, skipping")
 			return
 		}
@@ -218,38 +216,55 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		downloadDriveFile(*post)
+		if err := downloadDriveFile(*post); err != nil {
+			logrus.WithField("post", post).Error("Failed to download drive file after update")
+		}
 
 		return
 	}
 }
 
-func downloadDriveFile(post Post) {
+func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading updated post from Google Drive")
 
 	req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
 	if err != nil {
 		log.WithError(err).Error("Failed to create GET request for updated post file")
-		return
+		return err
 	}
 
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	defer resp.Body.Close()
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
-		return
+		return err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.WithError(err).Error("Failed to read response body")
-		return
+		return err
 	}
 
-	log.WithField("body", body).Info("Have post file body")
+	log.Info("Saving updated file locally")
 
-	return
+	postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
+	exists, err := pathExists(postDirectory)
+	if err != nil {
+		log.WithError(err).Error("Error checking whether post directory exists")
+		return err
+	}
+	if !exists {
+		if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
+			log.WithError(err).Error("Error creating post directory")
+			return err
+		}
+	}
+
+	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
+
+	return nil
 }
 
 func HandleStop(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
