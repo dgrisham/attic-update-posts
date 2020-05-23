@@ -203,6 +203,7 @@ func HandlePostUpdate(posts map[string]Post) func(w http.ResponseWriter, r *http
 		logrus.WithFields(logrus.Fields{
 			"last updated": post.LastUpdated,
 			"oneMinAgo":    oneMinAgo,
+			"time.Now()":   time.Now(),
 		}).Debug("TIMESSSSSSSSS")
 		if post.LastUpdated.After(oneMinAgo) { // post was updated in the last minute
 			logrus.WithField("post", post).Debug("Post has been updated in the last minute, skipping")
