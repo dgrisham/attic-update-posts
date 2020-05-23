@@ -251,8 +251,8 @@ func downloadDriveFile(post Post) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err := fmt.Errorf("Got non-2XX status code from google drive")
 
-		var jsonErrBody interface{}
-		err2 := json.Unmarshal(body, &jsonErrBody)
+		var getError driveFileGetError
+		err2 := json.Unmarshal(body, &getError)
 		if err2 != nil {
 			log.WithError(err2).Error("Error unmarshalling json error")
 			return err
@@ -260,7 +260,7 @@ func downloadDriveFile(post Post) error {
 
 		log.WithFields(logrus.Fields{
 			"status code": resp.StatusCode,
-			"body":        jsonErrBody,
+			"error":       getError.Error,
 		}).Error(err)
 		return err
 	}

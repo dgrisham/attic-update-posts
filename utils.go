@@ -16,6 +16,14 @@ import (
 
 var srv *drive.Service
 
+type driveFileGetError struct {
+	Error struct {
+		Code    int `json:"code"`
+		Errors  []string
+		Message string
+	} `json:"error"`
+}
+
 func generateHash(length int) string {
 	pool := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	rand.Seed(time.Now().UTC().UnixNano())
