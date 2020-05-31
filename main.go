@@ -50,7 +50,9 @@ func main() {
 }
 
 func subscribeToPosts() map[string]*Post {
-	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+	r, err := srv.Files.List().
+		Q("mimeType = 'application/vnd.google-apps.folder' and trashed = false").
+		PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve file list")
 	}
@@ -59,7 +61,6 @@ func subscribeToPosts() map[string]*Post {
 		logrus.Fatal("No files found.")
 	} else {
 		for _, file := range r.Files {
-			logrus.WithField("filename", file.Name).Debug("Found file in google drive")
 			if file.Name == "attic-posts" {
 				posts := make(map[string]*Post)
 				authorFolders, err := srv.Files.List().
