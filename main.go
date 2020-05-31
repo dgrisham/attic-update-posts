@@ -246,7 +246,7 @@ func downloadDriveFile(post Post) error {
 	// 	return err
 	// }
 
-	fileURL := fmt.Sprintf(`https://docs.google.com/uc?export=download&id=%s`, post.FileID)
+	fileURL := fmt.Sprintf(`https://docs.google.com/uc?export=download\&id=%s`, post.FileID)
 	log.WithField("file URL", fileURL).Debug("Attempting to GET file from google drive")
 	resp, err := driveClient.Get(fileURL)
 	log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
