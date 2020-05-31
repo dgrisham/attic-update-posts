@@ -136,6 +136,7 @@ func subscribeToPosts() map[string]*Post {
 							Date:        date.Name,
 							FileName:    postFile.Name,
 							FileID:      postFile.Id,
+							MimeType:    postFile.MimeType,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
 							Channel:     returnedChannel,
 							lock:        new(sync.Mutex),
