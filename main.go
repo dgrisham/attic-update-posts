@@ -151,9 +151,9 @@ func subscribeToPosts() map[string]*Post {
 
 						posts[returnedChannel.Id] = post
 
-						// if err := downloadDriveFile(*post); err != nil {
-						// 	logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
-						// }
+						if err := downloadDriveFile(*post); err != nil {
+							logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
+						}
 					}
 				}
 
