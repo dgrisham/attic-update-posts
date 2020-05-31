@@ -51,8 +51,8 @@ func main() {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
 
-	_ = subscribeToPosts()
-	// startHTTPListener(posts)
+	posts := subscribeToPosts()
+	startHTTPListener(posts)
 }
 
 func subscribeToPosts() map[string]*Post {
@@ -151,10 +151,8 @@ func subscribeToPosts() map[string]*Post {
 
 						posts[returnedChannel.Id] = post
 
-						if post.MimeType == googleDocMime {
-							if err := downloadDriveFile(*post); err != nil {
-								logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
-							}
+						if err := downloadDriveFile(*post); err != nil {
+							logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
 						}
 					}
 				}
@@ -245,11 +243,10 @@ func downloadDriveFile(post Post) error {
 	var resp *http.Response
 	var err error
 	switch post.MimeType {
-	case docxMime:
+	case docxMime: // download docx directly
 		resp, err = driveService.Files.Get(post.FileID).Download()
-	case googleDocMime:
+	case googleDocMime: // export google doc files as docx
 		resp, err = driveService.Files.Export(post.FileID, docxMime).Download()
-		// resp, err = driveClient.Get("https://docs.google.com/uc?export=download&id=" + post.FileID)
 	}
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
@@ -282,7 +279,7 @@ func downloadDriveFile(post Post) error {
 
 	log.Info("Saving updated file locally")
 
-	postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
+	postDirectory := fmt.Sprintf("/home/grish/html/drive/%s/%s", post.Author, post.Date)
 	exists, err := pathExists(postDirectory)
 	if err != nil {
 		log.WithError(err).Error("Error checking whether post directory exists")
@@ -295,7 +292,7 @@ func downloadDriveFile(post Post) error {
 		}
 	}
 
-	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.FileName), body, 0664)
+	ioutil.WriteFile(fmt.Sprintf("%s/%s", postDirectory, post.FileName), body, 0664)
 
 	return nil
 }
