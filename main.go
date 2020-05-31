@@ -40,6 +40,10 @@ func main() {
 		logrus.WithError(err).Fatal("Unable to parse client secret file to conf")
 	}
 	driveClient = getClient(config)
+	driveClient.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+		r.URL.Opaque = r.URL.Path
+		return nil
+	}
 
 	driveService, err = drive.New(driveClient)
 	if err != nil {
@@ -242,18 +246,18 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	// fileURL := "https://docs.google.com/uc"
-	fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
+	fileURL := "https://docs.google.com/uc"
+	// fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		log.WithError(err).Error("Failed to create GET request for updated post file")
 		return err
 	}
 
-	// query := req.URL.Query()
-	// query.Add("export", "download")
-	// query.Add("id", post.FileID)
-	// req.URL.RawQuery = query.Encode()
+	query := req.URL.Query()
+	query.Add("export", "download")
+	query.Add("id", post.FileID)
+	req.URL.RawQuery = query.Encode()
 
 	log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
