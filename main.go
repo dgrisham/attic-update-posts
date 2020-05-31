@@ -20,6 +20,7 @@ type Post struct {
 	Author      string
 	Date        string
 	Filename    string
+	FileID      string
 	LastUpdated time.Time
 	Channel     *drive.Channel
 	lock        *sync.Mutex
@@ -130,14 +131,17 @@ func subscribeToPosts() map[string]*Post {
 							Author:      author.Name,
 							Date:        date.Name,
 							Filename:    postFile.Name,
+							FileID:      postFile.Id,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
 							Channel:     returnedChannel,
 							lock:        new(sync.Mutex),
 						}
 
 						logrus.WithFields(logrus.Fields{
-							"channel id": returnedChannel.Id,
-							"post":       post,
+							"channel id":  returnedChannel.Id,
+							"post":        post,
+							"file id":     post.FileID,
+							"resource id": post.Channel.ResourceId,
 						}).Info("Successfully subscribed to post")
 
 						posts[returnedChannel.Id] = post
