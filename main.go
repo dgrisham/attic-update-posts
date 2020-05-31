@@ -246,20 +246,20 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	fileURL := "https://docs.google.com/uc"
+	fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
 	// fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
-	req, err := http.NewRequest("GET", fileURL, nil)
-	if err != nil {
-		log.WithError(err).Error("Failed to create GET request for updated post file")
-		return err
-	}
+	// req, err := http.NewRequest("GET", fileURL, nil)
+	// if err != nil {
+	// 	log.WithError(err).Error("Failed to create GET request for updated post file")
+	// 	return err
+	// }
 
-	query := req.URL.Query()
-	query.Add("export", "download")
-	query.Add("id", post.FileID)
-	req.URL.RawQuery = query.Encode()
+	// query := req.URL.Query()
+	// query.Add("export", "download")
+	// query.Add("id", post.FileID)
+	// req.URL.RawQuery = query.Encode()
 
-	resp, err := driveService.Files.Get(req.URL.String()).Download()
+	resp, err := driveService.Files.Get(fileURL).Download()
 	// log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
