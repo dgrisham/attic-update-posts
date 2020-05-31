@@ -289,7 +289,7 @@ func downloadDriveFile(post Post) error {
 
 		log.WithFields(logrus.Fields{
 			"status code": resp.StatusCode,
-			"json error":  err2,
+			"json error":  getError,
 		}).Error(err)
 		return err
 	}
