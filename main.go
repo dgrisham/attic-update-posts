@@ -240,17 +240,17 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	// req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
-	// if err != nil {
-	// 	log.WithError(err).Error("Failed to create GET request for updated post file")
-	// 	return err
-	// }
+	req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
+	if err != nil {
+		log.WithError(err).Error("Failed to create GET request for updated post file")
+		return err
+	}
 
-	fileURL := fmt.Sprintf(`https://docs.google.com/uc?export=download\&id=%s`, post.FileID)
-	log.WithField("file URL", fileURL).Debug("Attempting to GET file from google drive")
-	resp, err := driveClient.Get(fileURL)
-	log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
-	// resp, err := http.DefaultTransport.RoundTrip(req)
+	// fileURL := fmt.Sprintf(`https://docs.google.com/uc?export=download&id=%s`, post.FileID)
+	// log.WithField("file URL", fileURL).Debug("Attempting to GET file from google drive")
+	// resp, err := driveClient.Get(fileURL)
+	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
+	resp, err := driveClient.Transport.RoundTrip(req)
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
 		return err
