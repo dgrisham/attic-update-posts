@@ -21,7 +21,6 @@ type Post struct {
 	Date        string
 	FileName    string
 	FileID      string
-	FolderID    string
 	LastUpdated time.Time
 	Channel     *drive.Channel
 	lock        *sync.Mutex
@@ -71,7 +70,7 @@ func subscribeToPosts() map[string]*Post {
 				posts := make(map[string]*Post)
 				authorFolders, err := driveService.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
@@ -137,7 +136,6 @@ func subscribeToPosts() map[string]*Post {
 							Date:        date.Name,
 							FileName:    postFile.Name,
 							FileID:      postFile.Id,
-							FolderID:    file.Id,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
 							Channel:     returnedChannel,
 							lock:        new(sync.Mutex),
@@ -239,33 +237,7 @@ func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
-	// file, err := srv.Files.Get(post.Channel.ResourceId).Fields
-	// if err != nil {
-	// 	log.WithError(err).Error("Error downloading file from Google Drive")
-	// 	return err
-	// }
-
-	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
-
-	// fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
-	// fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
-	// fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
-	// req, err := http.NewRequest("GET", fileURL, nil)
-	// if err != nil {
-	// 	log.WithError(err).Error("Failed to create GET request for updated post file")
-	// 	return err
-	// }
-
-	// query := req.URL.Query()
-	// query.Add("export", "download")
-	// query.Add("id", post.FileID)
-	// req.URL.RawQuery = query.Encode()
-
 	resp, err := driveService.Files.Get(post.FileID).Download()
-	// log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
-	// resp, err := driveClient.Get(fileURL)
-	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
-	// resp, err := driveClient.Transport.RoundTrip(req)
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
 		return err
