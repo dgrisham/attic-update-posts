@@ -21,6 +21,7 @@ type Post struct {
 	Date        string
 	FileName    string
 	FileID      string
+	MimeType    string
 	LastUpdated time.Time
 	Channel     *drive.Channel
 	lock        *sync.Mutex
