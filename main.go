@@ -356,7 +356,7 @@ func downloadDriveFile(post Post) error {
 
 	{
 		var args []string
-		args = append(args, "rsync", "-rl", "--delete", "/home/grish/html/html/posts", "/usr/local/www/html")
+		args = append(args, "sudo", "rsync", "-rl", "--delete", "/home/grish/html/html/posts", "/usr/local/www/html")
 
 		log.WithField("cmd", strings.Join(args, " ")).Debug("Running command to sync html posts to attic root")
 
