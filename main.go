@@ -250,10 +250,10 @@ func downloadDriveFile(post Post) error {
 		return err
 	}
 
-	query := req.URL.Query()
-	query.Add("export", "download")
-	query.Add("id", post.FileID)
-	req.URL.RawQuery = query.Encode()
+	// query := req.URL.Query()
+	// query.Add("export", "download")
+	// query.Add("id", post.FileID)
+	// req.URL.RawQuery = query.Encode()
 
 	log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
