@@ -96,9 +96,8 @@ func subscribeToPosts() map[string]*Post {
 					for _, date := range dateFolders.Files {
 						logrus.WithField("date", date.Name).Debug("Retrieving posts for author")
 						postFiles, err := driveService.Files.List().
-							// Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.document' and '%s' in parents and trashed = false", date.Id)).
-							Q(fmt.Sprintf("(mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document') and '%s' in parents and trashed = false", date.Id)).
-							PageSize(1).Fields("nextPageToken, files(id, name, mimeType)").Do()
+							Q(fmt.Sprintf("(mimeType = '%s' or mimeType = '%s') and '%s' in parents and trashed = false", docxMime, googleDocMime, date.Id)).
+							PageSize(1).Fields("files(id, name, mimeType)").Do()
 						if err != nil {
 							logrus.WithError(err).Fatal("Error retrieving post file")
 						}
@@ -241,7 +240,14 @@ func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
-	resp, err := driveService.Files.Get(post.FileID).Download()
+	var resp *http.Response
+	var err error
+	switch post.MimeType {
+	case docxMime:
+		resp, err = driveService.Files.Get(post.FileID).Download()
+	case googleDocMime:
+		resp, err = driveClient.Get("https://docs.google.com/uc?export=download&id=" + post.FileID)
+	}
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
 		return err

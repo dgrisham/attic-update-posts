@@ -19,6 +19,11 @@ var (
 	driveClient  *http.Client
 )
 
+const (
+	docxMime      string = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	googleDocMime string = "application/vnd.google-apps.document"
+)
+
 type driveFileGetError struct {
 	Error struct {
 		Code    int           `json:"code"`
