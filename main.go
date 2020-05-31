@@ -260,9 +260,9 @@ func downloadDriveFile(post Post) error {
 	req.URL.RawQuery = query.Encode()
 
 	log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
-	// resp, err := driveClient.Get(fileURL)
+	resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
-	resp, err := driveClient.Transport.RoundTrip(req)
+	// resp, err := driveClient.Transport.RoundTrip(req)
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
 		return err
