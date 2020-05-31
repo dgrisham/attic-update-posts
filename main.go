@@ -50,14 +50,17 @@ func main() {
 }
 
 func subscribeToPosts() map[string]*Post {
+	logrus.Info("HERE1")
 	r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve file list")
 	}
 
+	logrus.Info("HERE2")
 	if len(r.Files) == 0 {
 		logrus.Fatal("No files found.")
 	} else {
+		logrus.Info("HERE3")
 		for _, file := range r.Files {
 			if file.Name == "attic-posts" {
 				posts := make(map[string]*Post)
