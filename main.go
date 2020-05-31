@@ -28,7 +28,7 @@ type Post struct {
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to read client secret file")
@@ -256,7 +256,7 @@ func downloadDriveFile(post Post) error {
 
 	query := req.URL.Query()
 	query.Add("export", "download")
-	query.Add("id", post.Channel.ResourceId)
+	query.Add("id", post.FileID)
 	req.URL.RawQuery = query.Encode()
 
 	log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
@@ -287,7 +287,7 @@ func downloadDriveFile(post Post) error {
 
 		log.WithFields(logrus.Fields{
 			"status code": resp.StatusCode,
-			"error":       resp.Body,
+			"resp.Body":   resp.Body,
 		}).Error(err)
 		return err
 	}
