@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -123,7 +122,7 @@ func subscribeToPosts() map[string]*Post {
 
 						returnedChannel, err := srv.Files.Watch(postFile.Id, channel).Do()
 						if err != nil {
-							logrus.WithError(err).Error("error subscribing to post file changes")
+							logrus.WithError(err).Error("Failed to subscribe to post file changes")
 						}
 
 						post := &Post{
@@ -138,7 +137,7 @@ func subscribeToPosts() map[string]*Post {
 						logrus.WithFields(logrus.Fields{
 							"channel id": returnedChannel.Id,
 							"post":       post,
-						}).Info("Have post")
+						}).Info("Successfully subscribed to post")
 
 						posts[returnedChannel.Id] = post
 
@@ -231,58 +230,66 @@ func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading updated post from Google Drive")
 
-	req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
+	file, err := srv.Files.Get(post.Channel.ResourceId).Do()
 	if err != nil {
-		log.WithError(err).Error("Failed to create GET request for updated post file")
+		log.WithError(err).Error("Error downloading file from Google Drive")
 		return err
 	}
 
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	defer resp.Body.Close()
-	if err != nil {
-		log.WithError(err).Error("Failed to fetch updated post file")
-		return err
-	}
+	// req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
+	// if err != nil {
+	// 	log.WithError(err).Error("Failed to create GET request for updated post file")
+	// 	return err
+	// }
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.WithError(err).Error("Failed to read response body")
-		return err
-	}
+	// resp, err := http.DefaultTransport.RoundTrip(req)
+	// defer resp.Body.Close()
+	// if err != nil {
+	// 	log.WithError(err).Error("Failed to fetch updated post file")
+	// 	return err
+	// }
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err := fmt.Errorf("Got non-2XX status code from google drive")
+	log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-		var getError driveFileGetError
-		err2 := json.Unmarshal(body, &getError)
-		if err2 != nil {
-			log.WithError(err2).Error("Error unmarshalling json body into error")
-			return err
-		}
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.WithError(err).Error("Failed to read response body")
+	// 	return err
+	// }
 
-		log.WithFields(logrus.Fields{
-			"status code": resp.StatusCode,
-			"error":       getError.Error,
-		}).Error(err)
-		return err
-	}
+	// if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	// 	err := fmt.Errorf("Got non-2XX status code from google drive")
 
-	log.Info("Saving updated file locally")
+	// 	var getError driveFileGetError
+	// 	err2 := json.Unmarshal(body, &getError)
+	// 	if err2 != nil {
+	// 		log.WithError(err2).Error("Error unmarshalling json body into error")
+	// 		return err
+	// 	}
 
-	postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
-	exists, err := pathExists(postDirectory)
-	if err != nil {
-		log.WithError(err).Error("Error checking whether post directory exists")
-		return err
-	}
-	if !exists {
-		if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
-			log.WithError(err).Error("Error creating post directory")
-			return err
-		}
-	}
+	// 	log.WithFields(logrus.Fields{
+	// 		"status code": resp.StatusCode,
+	// 		"error":       getError.Error,
+	// 	}).Error(err)
+	// 	return err
+	// }
 
-	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
+	// log.Info("Saving updated file locally")
+
+	// postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
+	// exists, err := pathExists(postDirectory)
+	// if err != nil {
+	// 	log.WithError(err).Error("Error checking whether post directory exists")
+	// 	return err
+	// }
+	// if !exists {
+	// 	if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
+	// 		log.WithError(err).Error("Error creating post directory")
+	// 		return err
+	// 	}
+	// }
+
+	// ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
 
 	return nil
 }
