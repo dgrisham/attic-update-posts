@@ -20,6 +20,7 @@ type Post struct {
 	Date        string
 	Filename    string
 	FileID      string
+	FolderID    string
 	LastUpdated time.Time
 	Channel     *drive.Channel
 	lock        *sync.Mutex
@@ -131,6 +132,7 @@ func subscribeToPosts() map[string]*Post {
 							Date:        date.Name,
 							Filename:    postFile.Name,
 							FileID:      postFile.Id,
+							FolderID:    file.Id,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
 							Channel:     returnedChannel,
 							lock:        new(sync.Mutex),
@@ -240,8 +242,8 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	fileURL := "https://docs.google.com/uc"
-	// fileURL := "https://googledrive.com/host/" + post.FileID
+	// fileURL := "https://docs.google.com/uc"
+	fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileID
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		log.WithError(err).Error("Failed to create GET request for updated post file")
