@@ -246,7 +246,9 @@ func downloadDriveFile(post Post) error {
 	// 	return err
 	// }
 
-	resp, err := driveClient.Get(fmt.Sprintf("https://docs.google.com/uc?export=download&id=%s", post.FileID))
+	fileURL := fmt.Sprintf("https://docs.google.com/uc?export=download&id=%s", post.FileID)
+	log.WithField("file URL", fileURL).Debug("Attempting to GET file from google drive")
+	resp, err := driveClient.Get(fileURL)
 	// resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
