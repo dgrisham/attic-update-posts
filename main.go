@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -51,8 +52,8 @@ func main() {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
 
-	posts := subscribeToPosts()
-	startHTTPListener(posts)
+	_ = subscribeToPosts()
+	// startHTTPListener(posts)
 }
 
 func subscribeToPosts() map[string]*Post {
@@ -71,7 +72,7 @@ func subscribeToPosts() map[string]*Post {
 				posts := make(map[string]*Post)
 				authorFolders, err := driveService.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
@@ -240,6 +241,10 @@ func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
+	/*********************
+	* download post file *
+	*********************/
+
 	var resp *http.Response
 	var err error
 	switch post.MimeType {
@@ -277,22 +282,66 @@ func downloadDriveFile(post Post) error {
 		return err
 	}
 
+	/************************
+	* save post doc locally *
+	************************/
+
 	log.Info("Saving updated file locally")
 
 	postDirectory := fmt.Sprintf("/home/grish/html/drive/%s/%s", post.Author, post.Date)
-	exists, err := pathExists(postDirectory)
-	if err != nil {
-		log.WithError(err).Error("Error checking whether post directory exists")
-		return err
-	}
-	if !exists {
-		if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
-			log.WithError(err).Error("Error creating post directory")
+	{
+		exists, err := pathExists(postDirectory)
+		if err != nil {
+			log.WithError(err).Error("Error checking whether post directory exists")
 			return err
+		}
+		if !exists {
+			if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
+				log.WithError(err).Error("Error creating post directory")
+				return err
+			}
 		}
 	}
 
-	ioutil.WriteFile(fmt.Sprintf("%s/%s", postDirectory, post.FileName), body, 0664)
+	postPath := fmt.Sprintf("%s/%s", postDirectory, post.FileName)
+	ioutil.WriteFile(postPath, body, 0664)
+
+	/*****************************************
+	* make sure output html directory exists *
+	*****************************************/
+
+	htmlDirectory := fmt.Sprintf("/home/grish/html/test/%s/%s", post.Author, post.Date)
+	{
+		exists, err := pathExists(htmlDirectory)
+		if err != nil {
+			log.WithError(err).Error("Error checking whether html destination directory exists")
+			return err
+		}
+		if !exists {
+			if err := os.MkdirAll(htmlDirectory, os.ModePerm); err != nil {
+				log.WithError(err).Error("Error creating html destination directory")
+				return err
+			}
+		}
+	}
+
+	/****************************
+	* convert post file to html *
+	****************************/
+
+	var cmd []string
+	cmd = append(cmd, "/home/grish/html/bin/convert_posts.zsh", "post")
+	cmd = append(cmd, postPath, htmlDirectory)
+
+	log.WithField("cmd", cmd).Debug("Running script to update post html from docx")
+
+	out, err := exec.Command(cmd[0], cmd[1:]...).Output()
+	if err != nil {
+		log.WithError(err).Error("Failed to run script to update post html from docx")
+		return err
+	}
+
+	log.WithField("cmd output", out).Debug("Successfully ran script to update post html from docx")
 
 	return nil
 }
