@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -329,19 +330,23 @@ func downloadDriveFile(post Post) error {
 	* convert post file to html *
 	****************************/
 
-	var cmd []string
-	cmd = append(cmd, "/home/grish/html/bin/convert_posts.zsh", "post")
-	cmd = append(cmd, postPath, htmlDirectory)
+	var args []string
+	args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
+	args = append(args, postPath, htmlDirectory)
 
-	log.WithField("cmd", strings.Join(cmd, " ")).Debug("Running script to update post html from docx")
+	log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to update post html from docx")
 
-	out, err := exec.Command(cmd[0], cmd[1:]...).Output()
-	if err != nil {
-		log.WithError(err).Error("Failed to run script to update post html from docx")
+	cmd := exec.Command(args[0], args[1:]...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run script to update post html from docx")
 		return err
 	}
 
-	log.WithField("cmd output", out).Debug("Successfully ran script to update post html from docx")
+	log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
 
 	return nil
 }
