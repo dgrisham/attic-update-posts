@@ -333,7 +333,7 @@ func downloadDriveFile(post Post) error {
 	cmd = append(cmd, "/home/grish/html/bin/convert_posts.zsh", "post")
 	cmd = append(cmd, postPath, htmlDirectory)
 
-	log.WithField("cmd", cmd).Debug("Running script to update post html from docx")
+	log.WithField("cmd", strings.Join(cmd, " ")).Debug("Running script to update post html from docx")
 
 	out, err := exec.Command(cmd[0], cmd[1:]...).Output()
 	if err != nil {
