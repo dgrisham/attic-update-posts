@@ -264,6 +264,7 @@ func downloadDriveFile(post Post) error {
 	// req.URL.RawQuery = query.Encode()
 
 	resp, err := driveService.Files.Get(post.WebContentLink).Download()
+	log.WithField("post.WebContentLink", post.WebContentLink).Debug("Attempting to GET file from google drive")
 	// log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
