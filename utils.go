@@ -14,7 +14,10 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
-var srv *drive.Service
+var (
+	driveService *drive.Service
+	driveClient  *http.Client
+)
 
 type driveFileGetError struct {
 	Error struct {
