@@ -247,7 +247,8 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
+	// fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
+	fileURL := "https://googledrive.com/host/" + post.FileID
 	// fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
 	// req, err := http.NewRequest("GET", fileURL, nil)
 	// if err != nil {
