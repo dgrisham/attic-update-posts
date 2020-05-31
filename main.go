@@ -17,14 +17,15 @@ import (
 )
 
 type Post struct {
-	Author      string
-	Date        string
-	FileName    string
-	FileID      string
-	FolderID    string
-	LastUpdated time.Time
-	Channel     *drive.Channel
-	lock        *sync.Mutex
+	Author         string
+	Date           string
+	FileName       string
+	FileID         string
+	FolderID       string
+	WebContentLink string
+	LastUpdated    time.Time
+	Channel        *drive.Channel
+	lock           *sync.Mutex
 }
 
 func main() {
@@ -133,14 +134,15 @@ func subscribeToPosts() map[string]*Post {
 						}
 
 						post := &Post{
-							Author:      author.Name,
-							Date:        date.Name,
-							FileName:    postFile.Name,
-							FileID:      postFile.Id,
-							FolderID:    file.Id,
-							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
-							Channel:     returnedChannel,
-							lock:        new(sync.Mutex),
+							Author:         author.Name,
+							Date:           date.Name,
+							FileName:       postFile.Name,
+							FileID:         postFile.Id,
+							FolderID:       file.Id,
+							WebContentLink: postFile.WebContentLink,
+							LastUpdated:    time.Now().Add(time.Duration(-2) * time.Minute),
+							Channel:        returnedChannel,
+							lock:           new(sync.Mutex),
 						}
 
 						logrus.WithFields(logrus.Fields{
@@ -248,7 +250,7 @@ func downloadDriveFile(post Post) error {
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
 	// fileURL := "https://docs.google.com/uc?export=download&id=" + post.FileID
-	fileURL := "https://googledrive.com/host/" + post.FileID
+	// fileURL := "https://googledrive.com/host/" + post.FileID
 	// fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
 	// req, err := http.NewRequest("GET", fileURL, nil)
 	// if err != nil {
@@ -261,7 +263,7 @@ func downloadDriveFile(post Post) error {
 	// query.Add("id", post.FileID)
 	// req.URL.RawQuery = query.Encode()
 
-	resp, err := driveService.Files.Get(fileURL).Download()
+	resp, err := driveService.Files.Get(post.WebContentLink).Download()
 	// log.WithField("req URL", req.URL).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
