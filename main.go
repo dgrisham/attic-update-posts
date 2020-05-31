@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -37,9 +38,9 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to parse client secret file to conf")
 	}
-	client := getClient(config)
+	driveClient = getClient(config)
 
-	srv, err = drive.New(client)
+	driveService, err = drive.New(driveClient)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
@@ -49,7 +50,7 @@ func main() {
 }
 
 func subscribeToPosts() map[string]*Post {
-	r, err := srv.Files.List().
+	r, err := driveService.Files.List().
 		Q("mimeType = 'application/vnd.google-apps.folder' and trashed = false").
 		PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
@@ -62,7 +63,7 @@ func subscribeToPosts() map[string]*Post {
 		for _, file := range r.Files {
 			if file.Name == "attic-posts" {
 				posts := make(map[string]*Post)
-				authorFolders, err := srv.Files.List().
+				authorFolders, err := driveService.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
 					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
@@ -75,7 +76,7 @@ func subscribeToPosts() map[string]*Post {
 
 				for _, author := range authorFolders.Files {
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
-					dateFolders, err := srv.Files.List().
+					dateFolders, err := driveService.Files.List().
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
 						PageSize(100).Fields("nextPageToken, files(id, name)").Do()
 					if err != nil {
@@ -88,7 +89,7 @@ func subscribeToPosts() map[string]*Post {
 
 					for _, date := range dateFolders.Files {
 						logrus.WithField("date", date.Name).Debug("Retrieving posts for author")
-						postFiles, err := srv.Files.List().
+						postFiles, err := driveService.Files.List().
 							Q(fmt.Sprintf("(mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document') and '%s' in parents and trashed = false", date.Id)).
 							PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 						if err != nil {
@@ -120,7 +121,7 @@ func subscribeToPosts() map[string]*Post {
 							Payload:    true,
 						}
 
-						returnedChannel, err := srv.Files.Watch(postFile.Id, channel).Do()
+						returnedChannel, err := driveService.Files.Watch(postFile.Id, channel).Do()
 						if err != nil {
 							logrus.WithError(err).Error("Failed to subscribe to post file changes")
 						}
@@ -230,11 +231,13 @@ func downloadDriveFile(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading updated post from Google Drive")
 
-	file, err := srv.Files.Get(post.Channel.ResourceId).Do()
-	if err != nil {
-		log.WithError(err).Error("Error downloading file from Google Drive")
-		return err
-	}
+	// file, err := srv.Files.Get(post.Channel.ResourceId).Fields
+	// if err != nil {
+	// 	log.WithError(err).Error("Error downloading file from Google Drive")
+	// 	return err
+	// }
+
+	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
 	// req, err := http.NewRequest("GET", post.Channel.ResourceUri, nil)
 	// if err != nil {
@@ -242,54 +245,53 @@ func downloadDriveFile(post Post) error {
 	// 	return err
 	// }
 
+	resp, err := driveClient.Get(post.Channel.ResourceUri)
 	// resp, err := http.DefaultTransport.RoundTrip(req)
-	// defer resp.Body.Close()
-	// if err != nil {
-	// 	log.WithError(err).Error("Failed to fetch updated post file")
-	// 	return err
-	// }
+	if err != nil {
+		log.WithError(err).Error("Failed to fetch updated post file")
+		return err
+	}
+	defer resp.Body.Close()
 
-	log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.WithError(err).Error("Failed to read response body")
+		return err
+	}
 
-	// body, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	log.WithError(err).Error("Failed to read response body")
-	// 	return err
-	// }
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err := fmt.Errorf("Got non-2XX status code from google drive")
 
-	// if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-	// 	err := fmt.Errorf("Got non-2XX status code from google drive")
+		var getError driveFileGetError
+		err2 := json.Unmarshal(body, &getError)
+		if err2 != nil {
+			log.WithError(err2).Error("Error unmarshalling json body into error")
+			return err
+		}
 
-	// 	var getError driveFileGetError
-	// 	err2 := json.Unmarshal(body, &getError)
-	// 	if err2 != nil {
-	// 		log.WithError(err2).Error("Error unmarshalling json body into error")
-	// 		return err
-	// 	}
+		log.WithFields(logrus.Fields{
+			"status code": resp.StatusCode,
+			"error":       getError.Error,
+		}).Error(err)
+		return err
+	}
 
-	// 	log.WithFields(logrus.Fields{
-	// 		"status code": resp.StatusCode,
-	// 		"error":       getError.Error,
-	// 	}).Error(err)
-	// 	return err
-	// }
+	log.Info("Saving updated file locally")
 
-	// log.Info("Saving updated file locally")
+	postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
+	exists, err := pathExists(postDirectory)
+	if err != nil {
+		log.WithError(err).Error("Error checking whether post directory exists")
+		return err
+	}
+	if !exists {
+		if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
+			log.WithError(err).Error("Error creating post directory")
+			return err
+		}
+	}
 
-	// postDirectory := fmt.Sprintf("./posts/%s/%s", post.Author, post.Date)
-	// exists, err := pathExists(postDirectory)
-	// if err != nil {
-	// 	log.WithError(err).Error("Error checking whether post directory exists")
-	// 	return err
-	// }
-	// if !exists {
-	// 	if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
-	// 		log.WithError(err).Error("Error creating post directory")
-	// 		return err
-	// 	}
-	// }
-
-	// ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
+	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
 
 	return nil
 }
@@ -300,7 +302,7 @@ func HandleStop(posts map[string]*Post) func(w http.ResponseWriter, r *http.Requ
 
 		status := http.StatusOK
 		for _, post := range posts {
-			if err := srv.Channels.Stop(post.Channel).Do(); err != nil {
+			if err := driveService.Channels.Stop(post.Channel).Do(); err != nil {
 				logrus.WithError(err).Error("Error stopping channel")
 				status = http.StatusInternalServerError
 			}
