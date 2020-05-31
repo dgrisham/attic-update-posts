@@ -96,9 +96,9 @@ func subscribeToPosts() map[string]*Post {
 					for _, date := range dateFolders.Files {
 						logrus.WithField("date", date.Name).Debug("Retrieving posts for author")
 						postFiles, err := driveService.Files.List().
-							Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.document' and '%s' in parents and trashed = false", date.Id)).
-							// Q(fmt.Sprintf("(mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document') and '%s' in parents and trashed = false", date.Id)).
-							PageSize(1).Fields("nextPageToken, files(id, name)").Do()
+							// Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.document' and '%s' in parents and trashed = false", date.Id)).
+							Q(fmt.Sprintf("(mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document') and '%s' in parents and trashed = false", date.Id)).
+							PageSize(1).Fields("nextPageToken, files(id, name, mimeType)").Do()
 						if err != nil {
 							logrus.WithError(err).Fatal("Error retrieving post file")
 						}
