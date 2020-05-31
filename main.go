@@ -18,7 +18,7 @@ import (
 type Post struct {
 	Author      string
 	Date        string
-	Filename    string
+	FileName    string
 	FileID      string
 	FolderID    string
 	LastUpdated time.Time
@@ -130,7 +130,7 @@ func subscribeToPosts() map[string]*Post {
 						post := &Post{
 							Author:      author.Name,
 							Date:        date.Name,
-							Filename:    postFile.Name,
+							FileName:    postFile.Name,
 							FileID:      postFile.Id,
 							FolderID:    file.Id,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
@@ -243,7 +243,7 @@ func downloadDriveFile(post Post) error {
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
 	// fileURL := "https://docs.google.com/uc"
-	fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileID
+	fileURL := "https://googledrive.com/host/" + post.FolderID + "/" + post.Author + "/" + post.Date + "/" + post.FileName
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		log.WithError(err).Error("Failed to create GET request for updated post file")
@@ -303,7 +303,7 @@ func downloadDriveFile(post Post) error {
 		}
 	}
 
-	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.Filename), body, 0664)
+	ioutil.WriteFile(fmt.Sprintf("./posts/%s/%s/%s", post.Author, post.Date, post.FileName), body, 0664)
 
 	return nil
 }
