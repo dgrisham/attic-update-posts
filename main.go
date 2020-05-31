@@ -265,6 +265,10 @@ func downloadDriveFile(post Post) error {
 	// resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 	// resp, err := driveClient.Transport.RoundTrip(req)
+	if err != nil {
+		log.WithError(err).Error("Failed to fetch updated post file")
+		return err
+	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -285,7 +289,7 @@ func downloadDriveFile(post Post) error {
 
 		log.WithFields(logrus.Fields{
 			"status code": resp.StatusCode,
-			"json error":  getError,
+			"json error":  err,
 		}).Error(err)
 		return err
 	}
