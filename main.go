@@ -240,8 +240,8 @@ func downloadDriveFile(post Post) error {
 
 	// log.WithField("file", file).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 
-	// fileURL := "https://docs.google.com/uc"
-	fileURL := "https://googledrive.com/host/" + post.FileID
+	fileURL := "https://docs.google.com/uc"
+	// fileURL := "https://googledrive.com/host/" + post.FileID
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		log.WithError(err).Error("Failed to create GET request for updated post file")
@@ -252,7 +252,7 @@ func downloadDriveFile(post Post) error {
 	// query.Add("id", post.FileID)
 	// req.URL.RawQuery = query.Encode()
 
-	log.WithField("req", req).Debug("Attempting to GET file from google drive")
+	log.WithField("req", req.URL.Query()).Debug("Attempting to GET file from google drive")
 	// resp, err := driveClient.Get(fileURL)
 	// log.WithField("status code", resp.StatusCode).Debug("DEBUGGGGGGGGGGGGGGGGGGGGGGGGG")
 	resp, err := driveClient.Transport.RoundTrip(req)
