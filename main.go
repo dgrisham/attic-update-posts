@@ -138,10 +138,8 @@ func subscribeToPosts() map[string]*Post {
 						}
 
 						logrus.WithFields(logrus.Fields{
-							"channel id":  returnedChannel.Id,
-							"post":        post,
-							"file id":     post.FileID,
-							"resource id": post.Channel.ResourceId,
+							"channel id": returnedChannel.Id,
+							"post":       post,
 						}).Info("Successfully subscribed to post")
 
 						posts[returnedChannel.Id] = post
@@ -249,7 +247,7 @@ func downloadDriveFile(post Post) error {
 	// 	return err
 	// }
 
-	resp, err := driveClient.Get(post.Channel.ResourceUri)
+	resp, err := driveClient.Get(fmt.Sprintf("https://googledrive.com/hosts/%s", post.FileID))
 	// resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
