@@ -311,7 +311,7 @@ func downloadDriveFile(post Post) error {
 	* make sure output html directory exists *
 	*****************************************/
 
-	htmlDirectory := fmt.Sprintf("/home/grish/html/test/%s/%s", post.Author, post.Date)
+	htmlDirectory := fmt.Sprintf("/home/grish/html/html/posts/%s/%s", post.Author, post.Date)
 	{
 		exists, err := pathExists(htmlDirectory)
 		if err != nil {
@@ -330,23 +330,48 @@ func downloadDriveFile(post Post) error {
 	* convert post file to html *
 	****************************/
 
-	var args []string
-	args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
-	args = append(args, postPath, htmlDirectory)
+	{
+		var args []string
+		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
+		args = append(args, postPath, htmlDirectory)
 
-	log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to update post html from docx")
+		log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to update post html from docx")
 
-	cmd := exec.Command(args[0], args[1:]...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+		cmd := exec.Command(args[0], args[1:]...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
-		log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run script to update post html from docx")
-		return err
+		if err := cmd.Run(); err != nil {
+			log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run script to update post html from docx")
+			return err
+		}
+
+		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
 	}
 
-	log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
+	/*****************************************
+	* rsync html directory with website root *
+	*****************************************/
+
+	{
+		var args []string
+		args = append(args, "rsync", "-rl", "--delete", "/home/grish/html/html", "/usr/local/www")
+
+		log.WithField("cmd", strings.Join(args, " ")).Debug("Running command to sync html posts to attic root")
+
+		cmd := exec.Command(args[0], args[1:]...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run command to sync html posts to attic root")
+			return err
+		}
+
+		log.WithField("stdout", stdout.String()).Debug("Successfully ran command to sync html posts to attic root")
+	}
 
 	return nil
 }
