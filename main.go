@@ -246,7 +246,8 @@ func downloadDriveFile(post Post) error {
 	case docxMime:
 		resp, err = driveService.Files.Get(post.FileID).Download()
 	case googleDocMime:
-		resp, err = driveClient.Get("https://docs.google.com/uc?export=download&id=" + post.FileID)
+		resp, err = driveService.Files.Export(post.FileID, post.MimeType).Download()
+		// resp, err = driveClient.Get("https://docs.google.com/uc?export=download&id=" + post.FileID)
 	}
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch updated post file")
