@@ -228,8 +228,10 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		if err := downloadDriveFile(*post); err != nil {
-			logrus.WithField("post", post).Error("Failed to download drive file after update")
+		if post.MimeType == googleDocMime {
+			if err := downloadDriveFile(*post); err != nil {
+				logrus.WithField("post", post).Error("Failed to download drive file after update")
+			}
 		}
 
 		return
