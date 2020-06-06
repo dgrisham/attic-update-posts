@@ -78,7 +78,7 @@ func subscribeToPosts() map[string]*Post {
 				posts := make(map[string]*Post)
 				authorFolders, err := driveService.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
