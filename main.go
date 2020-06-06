@@ -32,7 +32,7 @@ type Post struct {
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 	logrus.SetLevel(logrus.DebugLevel)
-	b, err := ioutil.ReadFile("credentials.json")
+	b, err := ioutil.ReadFile("/home/grish/update-posts/credentials.json")
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to read client secret file")
 	}
