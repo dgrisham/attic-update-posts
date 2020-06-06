@@ -53,8 +53,8 @@ func main() {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
 
-	_ = subscribeToPosts()
-	// startHTTPListener(posts)
+	posts := subscribeToPosts()
+	startHTTPListener(posts)
 }
 
 func subscribeToPosts() map[string]*Post {
