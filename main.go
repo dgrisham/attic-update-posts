@@ -32,10 +32,14 @@ type Post struct {
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 	logrus.SetLevel(logrus.DebugLevel)
+
+	logrus.Info("Starting up update-posts")
+
 	b, err := ioutil.ReadFile("/home/grish/update-posts/credentials.json")
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to read client secret file")
 	}
+	logrus.Info("Successfully set up logger")
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
@@ -48,6 +52,7 @@ func main() {
 		return nil
 	}
 
+	logrus.Info("Initializing drive service...")
 	driveService, err = drive.New(driveClient)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
