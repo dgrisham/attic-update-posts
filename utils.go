@@ -22,6 +22,7 @@ var (
 const (
 	docxMime      string = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 	googleDocMime string = "application/vnd.google-apps.document"
+	jpegMime      string = "image/jpeg"
 )
 
 type driveFileGetError struct {

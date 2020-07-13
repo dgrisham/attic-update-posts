@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -26,12 +27,13 @@ type Post struct {
 	MimeType    string
 	LastUpdated time.Time
 	Channel     *drive.Channel
+	image       *drive.File
 	lock        *sync.Mutex
 }
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	logrus.Info("Starting up update-posts")
 
@@ -78,7 +80,7 @@ func subscribeToPosts() map[string]*Post {
 				posts := make(map[string]*Post)
 				authorFolders, err := driveService.Files.List().
 					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
-					PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+					PageSize(15).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
 					logrus.WithError(err).Fatal("Error listing author folders")
 				}
@@ -91,7 +93,7 @@ func subscribeToPosts() map[string]*Post {
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
 					dateFolders, err := driveService.Files.List().
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
-						PageSize(100).Fields("nextPageToken, files(id, name)").Do()
+						PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 					if err != nil {
 						logrus.WithError(err).WithField("author", author).Fatal("Error listing author post folders")
 					}
@@ -101,7 +103,8 @@ func subscribeToPosts() map[string]*Post {
 					**********************************/
 
 					for _, date := range dateFolders.Files {
-						logrus.WithField("date", date.Name).Debug("Retrieving posts for author")
+
+						logrus.WithField("date", date.Name).Debug("Retrieving post for author")
 						postFiles, err := driveService.Files.List().
 							Q(fmt.Sprintf("(mimeType = '%s' or mimeType = '%s') and '%s' in parents and trashed = false", docxMime, googleDocMime, date.Id)).
 							PageSize(1).Fields("files(id, name, mimeType)").Do()
@@ -117,11 +120,28 @@ func subscribeToPosts() map[string]*Post {
 							continue
 						}
 
+						logrus.WithField("date", date.Name).Debug("Retrieving image for post")
+						imageFiles, err := driveService.Files.List().
+							Q(fmt.Sprintf("mimeType = '%s' and '%s' in parents and trashed = false", jpegMime, date.Id)).
+							PageSize(1).Fields("files(id, name, mimeType)").Do()
+						if err != nil {
+							logrus.WithError(err).Fatal("Error retrieving image file")
+						}
+
+						if len(imageFiles.Files) != 1 {
+							logrus.WithFields(logrus.Fields{
+								"actual":   len(imageFiles.Files),
+								"expected": 1,
+							}).Error("Unexpected number of image files")
+							continue
+						}
+
 						/************************************
 						* subscribe to updates on post file *
 						************************************/
 
 						postFile := postFiles.Files[0]
+						imageFile := imageFiles.Files[0]
 
 						channelID := generateHash(10)
 						expiration := time.Now().Add(time.Duration(1)*time.Minute).UnixNano() / 1000000
@@ -148,6 +168,7 @@ func subscribeToPosts() map[string]*Post {
 							MimeType:    postFile.MimeType,
 							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
 							Channel:     returnedChannel,
+							image:       imageFile,
 							lock:        new(sync.Mutex),
 						}
 
@@ -158,7 +179,7 @@ func subscribeToPosts() map[string]*Post {
 
 						posts[returnedChannel.Id] = post
 
-						if err := downloadDriveFile(*post); err != nil {
+						if err := downloadPost(*post); err != nil {
 							logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
 						}
 					}
@@ -235,7 +256,7 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		if err := downloadDriveFile(*post); err != nil {
+		if err := downloadPost(*post); err != nil {
 			logrus.WithField("post", post).Error("Failed to download drive file after update")
 		}
 
@@ -243,59 +264,28 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 	}
 }
 
-func downloadDriveFile(post Post) error {
+func downloadPost(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
-	/*********************
-	* download post file *
-	*********************/
+	postDirectory := fmt.Sprintf("/home/grish/html/drive/%s/%s", post.Author, post.Date)
 
-	var resp *http.Response
-	var err error
-	switch post.MimeType {
-	case docxMime: // download docx directly
-		resp, err = driveService.Files.Get(post.FileID).Download()
-	case googleDocMime: // export google doc files as docx
-		resp, err = driveService.Files.Export(post.FileID, docxMime).Download()
-	}
-	if err != nil {
-		log.WithError(err).Error("Failed to fetch updated post file")
-		return err
-	}
-	defer resp.Body.Close()
+	/******************************
+	* download and save post file *
+	******************************/
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.WithError(err).Error("Failed to read response body")
-		return err
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err := fmt.Errorf("Got non-2XX status code from google drive")
-
-		var getError driveFileGetError
-		err2 := json.Unmarshal(body, &getError)
-		if err2 != nil {
-			log.WithError(err2).Error("Error unmarshalling json body into error")
+	postPath := fmt.Sprintf("%s/%s", postDirectory, post.FileName)
+	{
+		// download post file
+		body, err := downloadDriveFile(post.FileName, post.MimeType)
+		if err != nil {
+			log.WithError(err).Error("Error downloading post")
 			return err
 		}
 
-		log.WithFields(logrus.Fields{
-			"status code": resp.StatusCode,
-			"json error":  err,
-		}).Error(err)
-		return err
-	}
+		log.Info("Saving updated file locally")
 
-	/************************
-	* save post doc locally *
-	************************/
-
-	log.Info("Saving updated file locally")
-
-	postDirectory := fmt.Sprintf("/home/grish/html/drive/%s/%s", post.Author, post.Date)
-	{
+		// ensure post directory exists
 		exists, err := pathExists(postDirectory)
 		if err != nil {
 			log.WithError(err).Error("Error checking whether post directory exists")
@@ -307,10 +297,40 @@ func downloadDriveFile(post Post) error {
 				return err
 			}
 		}
+
+		// save post file
+		ioutil.WriteFile(postPath, body, 0664)
 	}
 
-	postPath := fmt.Sprintf("%s/%s", postDirectory, post.FileName)
-	ioutil.WriteFile(postPath, body, 0664)
+	/****************************
+	* ensure cover image exists *
+	*****************************/
+
+	imagePath := fmt.Sprintf("%s/%s", postDirectory, post.image.Name)
+	imageDownloaded := false
+	{
+		exists, err := pathExists(imagePath)
+		if err != nil {
+			log.WithError(err).Error("Error checking whether post directory exists")
+			return err
+		}
+		if !exists {
+			// download image file
+			body, err := downloadDriveFile(post.FileName, post.MimeType)
+			if err != nil {
+				log.WithError(err).Error("Error downloading post")
+				return err
+			}
+
+			// save image file
+			if err := ioutil.WriteFile(imagePath, body, 0664); err != nil {
+				log.WithError(err).Error("Error saving image file")
+				return err
+			}
+
+			imageDownloaded = true
+		}
+	}
 
 	/*****************************************
 	* make sure output html directory exists *
@@ -355,6 +375,30 @@ func downloadDriveFile(post Post) error {
 		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
 	}
 
+	/**********************************************************
+	* if we downloaded a new cover image, generate thumbnails *
+	**********************************************************/
+
+	if imageDownloaded {
+		var args []string
+		title := strings.TrimSuffix(post.FileName, filepath.Ext(post.FileName))
+		args = append(args, "/home/grish/html/bin/make_thumbnail.zsh", title, post.Author, imagePath)
+
+		log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to create thumbnails from cover image")
+
+		cmd := exec.Command(args[0], args[1:]...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run script to update post html from docx")
+			return err
+		}
+
+		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
+	}
+
 	/*****************************************
 	* rsync html directory with website root *
 	*****************************************/
@@ -379,6 +423,54 @@ func downloadDriveFile(post Post) error {
 	}
 
 	return nil
+}
+
+func downloadDriveFile(fileID string, mimeType string) ([]byte, error) {
+	log := logrus.WithFields(logrus.Fields{
+		"fileID":   fileID,
+		"mimeType": mimeType,
+	})
+
+	var resp *http.Response
+	var err error
+	switch mimeType {
+	case docxMime, jpegMime: // download docx directly
+		resp, err = driveService.Files.Get(fileID).Download()
+	case googleDocMime: // export google doc files as docx
+		resp, err = driveService.Files.Export(fileID, docxMime).Download()
+	default:
+		return nil, fmt.Errorf("unsupported mime type: %s", mimeType)
+	}
+	if err != nil {
+		log.WithError(err).Error("Failed to fetch file from Google Drive")
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.WithError(err).Error("Failed to read response body")
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err := fmt.Errorf("Got non-2XX status code from Google Drive")
+
+		var getError driveFileGetError
+		err2 := json.Unmarshal(body, &getError)
+		if err2 != nil {
+			log.WithError(err2).Error("Error unmarshalling json body into error")
+			return nil, err
+		}
+
+		log.WithFields(logrus.Fields{
+			"status code": resp.StatusCode,
+			"json error":  err,
+		}).Error(err)
+		return nil, err
+	}
+
+	return body, nil
 }
 
 func HandleStop(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
