@@ -282,7 +282,7 @@ func downloadPost(post Post) error {
 	postPath := fmt.Sprintf("%s/%s", postDirectory, post.FileName)
 	{
 		// download post file
-		body, err := downloadDriveFile(post.FileName, post.MimeType)
+		body, err := downloadDriveFile(post.FileID, post.MimeType)
 		if err != nil {
 			log.WithError(err).Error("Error downloading post")
 			return err
