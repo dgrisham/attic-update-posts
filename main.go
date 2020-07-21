@@ -304,7 +304,10 @@ func downloadPost(post Post) error {
 		}
 
 		// save post file
-		ioutil.WriteFile(postPath, body, 0664)
+		if err := ioutil.WriteFile(postPath, body, 0664); err != nil {
+			log.WithError(err).Error("Error saving post to local file")
+			return err
+		}
 	}
 
 	/****************************
