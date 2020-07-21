@@ -368,7 +368,7 @@ func downloadPost(post Post) error {
 		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
 		args = append(args, postPath, htmlDirectory)
 
-		log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to update post html from docx")
+		log.WithField("cmd", strings.Join(args, " ")).Info("Running script to update post html from docx")
 
 		cmd := exec.Command(args[0], args[1:]...)
 		var stdout, stderr bytes.Buffer
@@ -380,7 +380,7 @@ func downloadPost(post Post) error {
 			return err
 		}
 
-		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
+		log.WithField("stdout", stdout.String()).Info("Successfully ran script to update post html from docx")
 	}
 
 	/**********************************************************
@@ -392,7 +392,7 @@ func downloadPost(post Post) error {
 		title := strings.TrimSuffix(post.FileName, filepath.Ext(post.FileName))
 		args = append(args, "/home/grish/html/bin/make_thumbnail.zsh", title, post.Author, imagePath)
 
-		log.WithField("cmd", strings.Join(args, " ")).Debug("Running script to create thumbnails from cover image")
+		log.WithField("cmd", strings.Join(args, " ")).Info("Running script to create thumbnails from cover image")
 
 		cmd := exec.Command(args[0], args[1:]...)
 		var stdout, stderr bytes.Buffer
