@@ -61,6 +61,7 @@ func main() {
 	}
 	logrus.Info("Successfully initialized drive service")
 
+	os.Exit(0)
 	posts := subscribeToPosts()
 	startHTTPListener(posts)
 }
