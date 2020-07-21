@@ -36,12 +36,12 @@ func main() {
 	logrus.SetLevel(logrus.InfoLevel)
 
 	logrus.Info("Starting up update-posts")
+	logrus.Info("Successfully set up logger")
 
 	b, err := ioutil.ReadFile("/home/grish/update-posts/credentials.json")
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to read client secret file")
 	}
-	logrus.Info("Successfully set up logger")
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
@@ -184,7 +184,7 @@ func subscribeToPosts() map[string]*Post {
 						posts[returnedChannel.Id] = post
 
 						if err := downloadPost(*post); err != nil {
-							logrus.WithField("post", post).Error("Failed to download drive file after subscribing")
+							logrus.WithError(err).WithField("post", post).Error("Failed to download drive file after subscribing")
 						}
 					}
 				}
