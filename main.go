@@ -363,7 +363,7 @@ func downloadPost(post Post) error {
 	* convert post file to html *
 	****************************/
 
-	if imageDownloaded || !imageDownloaded {
+	if imageDownloaded {
 		var args []string
 		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
 		args = append(args, postPath, htmlDirectory)
@@ -406,6 +406,10 @@ func downloadPost(post Post) error {
 
 		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
 	}
+
+	/***************************
+	* regenerate the home page *
+	***************************/
 
 	/*****************************************
 	* rsync html directory with website root *
