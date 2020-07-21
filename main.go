@@ -324,7 +324,7 @@ func downloadPost(post Post) error {
 		}
 		if !exists {
 			// download image file
-			body, err := downloadDriveFile(post.FileName, post.MimeType)
+			body, err := downloadDriveFile(post.image.Id, post.MimeType)
 			if err != nil {
 				log.WithError(err).Error("Error downloading post")
 				return err
