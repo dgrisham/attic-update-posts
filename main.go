@@ -409,7 +409,7 @@ func downloadPost(post Post) error {
 
 	{
 		var args []string
-		args = append(args, "/usr/local/bin/sudo", "/usr/local/bin/rsync", "-rl", "--delete", "/home/grish/html/html/posts", "/usr/local/www/html")
+		args = append(args, "/usr/local/bin/sudo", "/usr/local/bin/rsync", "-rl", "--delete", "/home/grish/html/html", "/usr/local/www")
 
 		log.WithField("cmd", strings.Join(args, " ")).Debug("Running command to sync html posts to attic root")
 
