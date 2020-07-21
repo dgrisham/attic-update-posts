@@ -90,6 +90,10 @@ func subscribeToPosts() map[string]*Post {
 				*************************/
 
 				for _, author := range authorFolders.Files {
+					if author.Name != "Matt Vail" {
+						logrus.WithField("author", author.Name).Info("Not Matt Vail, continuing")
+						continue
+					}
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
 					dateFolders, err := driveService.Files.List().
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
