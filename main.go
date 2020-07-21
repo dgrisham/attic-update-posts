@@ -288,7 +288,7 @@ func downloadPost(post Post) error {
 			return err
 		}
 
-		log.Info("Saving post file locally")
+		log.WithField("postPath", postPath).Info("Saving post file locally")
 
 		// ensure post directory exists
 		exists, err := pathExists(postDirectory)
