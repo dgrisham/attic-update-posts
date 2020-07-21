@@ -363,7 +363,7 @@ func downloadPost(post Post) error {
 	* convert post file to html *
 	****************************/
 
-	{
+	if imageDownloaded || !imageDownloaded {
 		var args []string
 		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
 		args = append(args, postPath, htmlDirectory)
