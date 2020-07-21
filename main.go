@@ -59,6 +59,7 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to retrieve Drive client")
 	}
+	logrus.Info("Successfully initialized drive service")
 
 	posts := subscribeToPosts()
 	startHTTPListener(posts)
@@ -90,10 +91,10 @@ func subscribeToPosts() map[string]*Post {
 				*************************/
 
 				for _, author := range authorFolders.Files {
-					if author.Name != "Matt Vail" {
-						logrus.WithField("author", author.Name).Info("Not Matt Vail, continuing")
-						continue
-					}
+					// if author.Name != "Matt Vail" {
+					// 	logrus.WithField("author", author.Name).Info("Not Matt Vail, continuing")
+					// 	continue
+					// }
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
 					dateFolders, err := driveService.Files.List().
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
