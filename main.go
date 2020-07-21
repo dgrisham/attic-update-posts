@@ -363,7 +363,7 @@ func downloadPost(post Post) error {
 	* convert post file to html *
 	****************************/
 
-	if imageDownloaded {
+	{
 		var args []string
 		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
 		args = append(args, postPath, htmlDirectory)
@@ -387,7 +387,7 @@ func downloadPost(post Post) error {
 	* if we downloaded a new cover image, generate thumbnails *
 	**********************************************************/
 
-	{
+	if imageDownloaded {
 		var args []string
 		title := strings.TrimSuffix(post.FileName, filepath.Ext(post.FileName))
 		args = append(args, "/home/grish/html/bin/make_thumbnail.zsh", title, post.Author, imagePath, htmlDirectory)
