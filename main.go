@@ -407,9 +407,27 @@ func downloadPost(post Post) error {
 		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to update post html from docx")
 	}
 
-	/***************************
-	* regenerate the home page *
-	***************************/
+	/**************************
+	* regenerate the homepage *
+	**************************/
+
+	{
+		script := "/home/grish/html/bin/gen_homepage.zsh"
+
+		log.WithField("cmd", script).Info("Running script to generate homepage")
+
+		cmd := exec.Command(script)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			log.WithError(err).WithField("stderr", stderr.String()).Error("Failed to run script to generate homepage")
+			return err
+		}
+
+		log.WithField("stdout", stdout.String()).Debug("Successfully ran script to generate homepage")
+	}
 
 	/*****************************************
 	* rsync html directory with website root *
