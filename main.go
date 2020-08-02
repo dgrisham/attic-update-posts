@@ -311,7 +311,7 @@ func downloadPost(post Post) error {
 	*****************************/
 
 	imagePath := fmt.Sprintf("%s/%s", postDirectory, post.image.Name)
-	imageDownloaded := false
+	// imageDownloaded := false
 	{
 		exists, err := pathExists(imagePath)
 		if err != nil {
@@ -332,7 +332,7 @@ func downloadPost(post Post) error {
 				return err
 			}
 
-			imageDownloaded = true
+			// imageDownloaded = true
 		}
 	}
 
