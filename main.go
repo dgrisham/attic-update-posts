@@ -33,7 +33,7 @@ type Post struct {
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	logrus.Info("Starting up update-posts")
 	logrus.Info("Successfully set up logger")
