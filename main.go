@@ -66,6 +66,8 @@ func main() {
 }
 
 func subscribeToPosts() map[string]*Post {
+	logrus.Info("INFO")
+	logrus.Debug("DEBUG")
 	r, err := driveService.Files.List().
 		Q("mimeType = 'application/vnd.google-apps.folder' and trashed = false").
 		PageSize(10).Fields("nextPageToken, files(id, name)").Do()
