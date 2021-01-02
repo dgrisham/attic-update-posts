@@ -31,7 +31,7 @@ type Post struct {
 	lock        *sync.Mutex
 }
 
-const DEBUG = false
+const DEBUG = true
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
@@ -334,7 +334,7 @@ func downloadPost(post Post) error {
 		}
 		if !exists {
 			log.WithField("imagePath", imagePath).Info("Downloading post image")
-			body, err := downloadDriveFile(post.image.Id, post.MimeType)
+			body, err := downloadDriveFile(post.image.Id, post.image.MimeType)
 			if err != nil {
 				log.WithError(err).Error("Error downloading post")
 				return err
