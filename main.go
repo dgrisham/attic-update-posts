@@ -102,7 +102,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 
 					if i > 0 { // NOTE: DEBUG
 						logrus.Debug("First author processed, skipping rest")
-						return nil
+						return posts, nil
 					}
 
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
@@ -110,7 +110,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
 						PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 					if err != nil {
-						return nil, fmt.Errorf("Error listing post folders for author '%s': %s", author, err.Error())
+						return nil, fmt.Errorf("Error listing post folders for author '%s': %s", author.Name, err.Error())
 					}
 
 					/**********************************
