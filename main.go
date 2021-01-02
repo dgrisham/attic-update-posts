@@ -20,15 +20,16 @@ import (
 )
 
 type Post struct {
-	Author      string
-	Date        string
-	FileName    string
-	FileID      string
-	MimeType    string
-	LastUpdated time.Time
-	Channel     *drive.Channel
-	image       *drive.File
-	lock        *sync.Mutex
+	Author        string
+	Date          string
+	FileName      string
+	FileExtension string
+	FileID        string
+	MimeType      string
+	LastUpdated   time.Time
+	Channel       *drive.Channel
+	image         *drive.File
+	lock          *sync.Mutex
 }
 
 const DEBUG = true
@@ -181,15 +182,16 @@ func subscribeToPosts() (map[string]*Post, error) {
 			}
 
 			post := &Post{
-				Author:      author.Name,
-				Date:        date.Name,
-				FileName:    postFile.Name,
-				FileID:      postFile.Id,
-				MimeType:    postFile.MimeType,
-				LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
-				Channel:     returnedChannel,
-				image:       imageFile,
-				lock:        new(sync.Mutex),
+				Author:        author.Name,
+				Date:          date.Name,
+				FileName:      postFile.Name,
+				FileExtension: postFile.FileExtension,
+				FileID:        postFile.Id,
+				MimeType:      postFile.MimeType,
+				LastUpdated:   time.Now().Add(time.Duration(-2) * time.Minute),
+				Channel:       returnedChannel,
+				image:         imageFile,
+				lock:          new(sync.Mutex),
 			}
 
 			logrus.WithFields(logrus.Fields{
@@ -290,6 +292,10 @@ func downloadPost(post Post) error {
 	******************************/
 
 	postPath := fmt.Sprintf("%s/%s", postDirectory, post.FileName)
+	if post.MimeType == googleDocMime && post.FileExtension == "" { // append file extension if missing
+		postPath = fmt.Sprintf("%s.docx", postPath)
+	}
+
 	{
 		// download post file
 		body, err := downloadDriveFile(post.FileID, post.MimeType)
