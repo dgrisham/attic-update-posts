@@ -205,7 +205,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Unknown error subscribing to authors' posts")
+	return nil, fmt.Errorf("attic-posts folder not found")
 }
 
 func startHTTPListener(posts map[string]*Post) {
