@@ -61,44 +61,56 @@ func main() {
 	}
 	logrus.Info("Successfully initialized drive service")
 
-	posts := subscribeToPosts()
+	posts, err := subscribeToPosts()
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to subscribe to posts, exiting")
+	}
 	startHTTPListener(posts)
 }
 
-func subscribeToPosts() map[string]*Post {
-	logrus.Info("INFO")
-	logrus.Debug("DEBUG")
+func subscribeToPosts() (map[string]*Post, error) {
+	logrus.Debug("Getting lists of files to subscribe to")
 	r, err := driveService.Files.List().
 		Q("mimeType = 'application/vnd.google-apps.folder' and trashed = false").
 		PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to retrieve file list")
+		return nil, fmt.Errorf("Unable to retrieve file list: %s", err.Error())
 	}
 
 	if len(r.Files) == 0 {
-		logrus.Fatal("No files found.")
+		return nil, fmt.Errorf("No folders found")
 	} else {
-		for _, file := range r.Files {
-			if file.Name == "attic-posts" {
+
+		logrus.Debug("Finding attic-posts folder")
+		for _, folder := range r.Files {
+			if folder.Name == "attic-posts" {
+
 				posts := make(map[string]*Post)
 				authorFolders, err := driveService.Files.List().
-					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", file.Id)).
+					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", folder.Id)).
 					PageSize(15).Fields("nextPageToken, files(id, name)").Do()
 				if err != nil {
-					logrus.WithError(err).Fatal("Error listing author folders")
+					return nil, fmt.Errorf("Error getting list of author folders: %s", err.Error())
 				}
 
 				/*************************
 				* get all author folders *
 				*************************/
 
-				for _, author := range authorFolders.Files {
+				logrus.Debug("Getting all author folders")
+				for i, author := range authorFolders.Files {
+
+					if i > 0 { // NOTE: DEBUG
+						logrus.Debug("First author processed, skipping rest")
+						return nil
+					}
+
 					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
 					dateFolders, err := driveService.Files.List().
 						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
 						PageSize(10).Fields("nextPageToken, files(id, name)").Do()
 					if err != nil {
-						logrus.WithError(err).WithField("author", author).Fatal("Error listing author post folders")
+						return nil, fmt.Errorf("Error listing post folders for author '%s': %s", author, err.Error())
 					}
 
 					/**********************************
@@ -112,7 +124,7 @@ func subscribeToPosts() map[string]*Post {
 							Q(fmt.Sprintf("(mimeType = '%s' or mimeType = '%s') and '%s' in parents and trashed = false", docxMime, googleDocMime, date.Id)).
 							PageSize(1).Fields("files(id, name, mimeType)").Do()
 						if err != nil {
-							logrus.WithError(err).Fatal("Error retrieving post file")
+							return nil, fmt.Errorf("Error retrieving post file: %s", err.Error())
 						}
 
 						if len(postFiles.Files) != 1 {
@@ -128,7 +140,7 @@ func subscribeToPosts() map[string]*Post {
 							Q(fmt.Sprintf("mimeType = '%s' and '%s' in parents and trashed = false", jpegMime, date.Id)).
 							PageSize(1).Fields("files(id, name, mimeType)").Do()
 						if err != nil {
-							logrus.WithError(err).Fatal("Error retrieving image file")
+							return nil, fmt.Errorf("Error retrieving image file: %s", err.Error())
 						}
 
 						if len(imageFiles.Files) != 1 {
@@ -188,12 +200,12 @@ func subscribeToPosts() map[string]*Post {
 					}
 				}
 
-				return posts
+				return posts, nil
 			}
 		}
 	}
 
-	return nil
+	return nil, fmt.Errorf("Unknown error subscribing to authors' posts")
 }
 
 func startHTTPListener(posts map[string]*Post) {
