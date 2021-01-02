@@ -83,6 +83,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 
 		logrus.Debug("Finding attic-posts folder")
 		for _, folder := range r.Files {
+    		logrus.WithField("folder", folder.Name.Debug("Have folder")
 			if folder.Name == "attic-posts" {
 
 				posts := make(map[string]*Post)
