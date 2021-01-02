@@ -31,9 +31,15 @@ type Post struct {
 	lock        *sync.Mutex
 }
 
+const DEBUG = false
+
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	logrus.SetLevel(logrus.DebugLevel)
+	if DEBUG {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
 
 	logrus.Info("Starting up update-posts")
 	logrus.Info("Successfully set up logger")
@@ -74,139 +80,132 @@ func subscribeToPosts() (map[string]*Post, error) {
 		Q("mimeType = 'application/vnd.google-apps.folder' and name = 'attic-posts'").
 		PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to retrieve file list: %s", err.Error())
+		return nil, fmt.Errorf("Error querying google drive for posts folder: %s", err.Error())
 	}
 
 	if len(r.Files) == 0 {
-		return nil, fmt.Errorf("No folders found")
-	} else {
+		return nil, fmt.Errorf("attic-posts folder not found")
+	}
 
-		logrus.Debug("Finding attic-posts folder")
-		for _, folder := range r.Files {
-			logrus.WithField("folder", folder.Name).Debug("Have folder")
-			if folder.Name == "attic-posts" {
+	logrus.Debug("Found attic-posts folder")
+	folder := r.Files[0]
 
-				posts := make(map[string]*Post)
-				authorFolders, err := driveService.Files.List().
-					Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", folder.Id)).
-					PageSize(15).Fields("nextPageToken, files(id, name)").Do()
-				if err != nil {
-					return nil, fmt.Errorf("Error getting list of author folders: %s", err.Error())
-				}
+	posts := make(map[string]*Post)
+	authorFolders, err := driveService.Files.List().
+		Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", folder.Id)).
+		PageSize(15).Fields("nextPageToken, files(id, name)").Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting list of author folders: %s", err.Error())
+	}
 
-				/*************************
-				* get all author folders *
-				*************************/
+	/*************************
+	* get all author folders *
+	*************************/
 
-				logrus.Debug("Getting all author folders")
-				for i, author := range authorFolders.Files {
+	logrus.Debug("Getting all author folders")
+	for i, author := range authorFolders.Files {
 
-					if i > 0 { // NOTE: DEBUG
-						logrus.Debug("First author processed, skipping rest")
-						return posts, nil
-					}
+		if DEBUG && i > 0 {
+			logrus.Debug("First author processed, skipping rest")
+			return posts, nil
+		}
 
-					logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
-					dateFolders, err := driveService.Files.List().
-						Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
-						PageSize(10).Fields("nextPageToken, files(id, name)").Do()
-					if err != nil {
-						return nil, fmt.Errorf("Error listing post folders for author '%s': %s", author.Name, err.Error())
-					}
+		logrus.WithField("author", author.Name).Debug("Retrieving posts for author")
+		dateFolders, err := driveService.Files.List().
+			Q(fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", author.Id)).
+			PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+		if err != nil {
+			return nil, fmt.Errorf("Error listing post folders for author '%s': %s", author.Name, err.Error())
+		}
 
-					/**********************************
-					* get all post folders for author *
-					**********************************/
+		/**********************************
+		* get all post folders for author *
+		**********************************/
 
-					for _, date := range dateFolders.Files {
+		for _, date := range dateFolders.Files {
 
-						logrus.WithField("date", date.Name).Debug("Retrieving post for author")
-						postFiles, err := driveService.Files.List().
-							Q(fmt.Sprintf("(mimeType = '%s' or mimeType = '%s') and '%s' in parents and trashed = false", docxMime, googleDocMime, date.Id)).
-							PageSize(1).Fields("files(id, name, mimeType)").Do()
-						if err != nil {
-							return nil, fmt.Errorf("Error retrieving post file: %s", err.Error())
-						}
+			logrus.WithField("date", date.Name).Debug("Retrieving post for author")
+			postFiles, err := driveService.Files.List().
+				Q(fmt.Sprintf("(mimeType = '%s' or mimeType = '%s') and '%s' in parents and trashed = false", docxMime, googleDocMime, date.Id)).
+				PageSize(1).Fields("files(id, name, mimeType)").Do()
+			if err != nil {
+				return nil, fmt.Errorf("Error retrieving post file: %s", err.Error())
+			}
 
-						if len(postFiles.Files) != 1 {
-							logrus.WithFields(logrus.Fields{
-								"actual":   len(postFiles.Files),
-								"expected": 1,
-							}).Error("Unexpected number of post files")
-							continue
-						}
+			if len(postFiles.Files) != 1 {
+				logrus.WithFields(logrus.Fields{
+					"actual":   len(postFiles.Files),
+					"expected": 1,
+				}).Error("Unexpected number of post files")
+				continue
+			}
 
-						logrus.WithField("date", date.Name).Debug("Retrieving image for post")
-						imageFiles, err := driveService.Files.List().
-							Q(fmt.Sprintf("mimeType = '%s' and '%s' in parents and trashed = false", jpegMime, date.Id)).
-							PageSize(1).Fields("files(id, name, mimeType)").Do()
-						if err != nil {
-							return nil, fmt.Errorf("Error retrieving image file: %s", err.Error())
-						}
+			logrus.WithField("date", date.Name).Debug("Retrieving image for post")
+			imageFiles, err := driveService.Files.List().
+				Q(fmt.Sprintf("mimeType = '%s' and '%s' in parents and trashed = false", jpegMime, date.Id)).
+				PageSize(1).Fields("files(id, name, mimeType)").Do()
+			if err != nil {
+				return nil, fmt.Errorf("Error retrieving image file: %s", err.Error())
+			}
 
-						if len(imageFiles.Files) != 1 {
-							logrus.WithFields(logrus.Fields{
-								"actual":   len(imageFiles.Files),
-								"expected": 1,
-							}).Error("Unexpected number of image files")
-							continue
-						}
+			if len(imageFiles.Files) != 1 {
+				logrus.WithFields(logrus.Fields{
+					"actual":   len(imageFiles.Files),
+					"expected": 1,
+				}).Error("Unexpected number of image files")
+				continue
+			}
 
-						/************************************
-						* subscribe to updates on post file *
-						************************************/
+			/************************************
+			* subscribe to updates on post file *
+			************************************/
 
-						postFile := postFiles.Files[0]
-						imageFile := imageFiles.Files[0]
+			postFile := postFiles.Files[0]
+			imageFile := imageFiles.Files[0]
 
-						channelID := generateHash(10)
-						expiration := time.Now().Add(time.Duration(1)*time.Minute).UnixNano() / 1000000
-						channel := &drive.Channel{
-							Kind:       "api#channel",
-							Id:         channelID,
-							Expiration: expiration,
-							ResourceId: postFile.Id,
-							Type:       "web_hook",
-							Address:    "https://theattic.us/api",
-							Payload:    true,
-						}
+			channelID := generateHash(10)
+			expiration := time.Now().Add(time.Duration(1)*time.Minute).UnixNano() / 1000000
+			channel := &drive.Channel{
+				Kind:       "api#channel",
+				Id:         channelID,
+				Expiration: expiration,
+				ResourceId: postFile.Id,
+				Type:       "web_hook",
+				Address:    "https://theattic.us/api",
+				Payload:    true,
+			}
 
-						returnedChannel, err := driveService.Files.Watch(postFile.Id, channel).Do()
-						if err != nil {
-							logrus.WithError(err).Error("Failed to subscribe to post file changes")
-						}
+			returnedChannel, err := driveService.Files.Watch(postFile.Id, channel).Do()
+			if err != nil {
+				logrus.WithError(err).Error("Failed to subscribe to post file changes")
+			}
 
-						post := &Post{
-							Author:      author.Name,
-							Date:        date.Name,
-							FileName:    postFile.Name,
-							FileID:      postFile.Id,
-							MimeType:    postFile.MimeType,
-							LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
-							Channel:     returnedChannel,
-							image:       imageFile,
-							lock:        new(sync.Mutex),
-						}
+			post := &Post{
+				Author:      author.Name,
+				Date:        date.Name,
+				FileName:    postFile.Name,
+				FileID:      postFile.Id,
+				MimeType:    postFile.MimeType,
+				LastUpdated: time.Now().Add(time.Duration(-2) * time.Minute),
+				Channel:     returnedChannel,
+				image:       imageFile,
+				lock:        new(sync.Mutex),
+			}
 
-						logrus.WithFields(logrus.Fields{
-							"channel id": returnedChannel.Id,
-							"post":       post,
-						}).Info("Successfully subscribed to post")
+			logrus.WithFields(logrus.Fields{
+				"channel id": returnedChannel.Id,
+				"post":       post,
+			}).Info("Successfully subscribed to post")
 
-						posts[returnedChannel.Id] = post
+			posts[returnedChannel.Id] = post
 
-						if err := downloadPost(*post); err != nil {
-							logrus.WithError(err).WithField("post", post).Error("Failed to download drive file after subscribing")
-						}
-					}
-				}
-
-				return posts, nil
+			if err := downloadPost(*post); err != nil {
+				logrus.WithError(err).WithField("post", post).Error("Failed to download drive file after subscribing")
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("attic-posts folder not found")
+	return posts, nil
 }
 
 func startHTTPListener(posts map[string]*Post) {
