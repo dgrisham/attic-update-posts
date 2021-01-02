@@ -32,7 +32,7 @@ type Post struct {
 	lock          *sync.Mutex
 }
 
-const DEBUG = true
+const DEBUG = false
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
