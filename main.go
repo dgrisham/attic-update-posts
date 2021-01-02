@@ -27,6 +27,8 @@ type Post struct {
 	FileID        string
 	MimeType      string
 	LastUpdated   time.Time
+	postPath      string
+	imagePath     string
 	Channel       *drive.Channel
 	image         *drive.File
 	lock          *sync.Mutex
@@ -201,7 +203,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 
 			posts[returnedChannel.Id] = post
 
-			if err := downloadPost(*post); err != nil {
+			if err := updatePost(*post); err != nil {
 				logrus.WithError(err).WithField("post", post).Error("Failed to download drive file after subscribing")
 			}
 		}
@@ -216,6 +218,7 @@ func startHTTPListener(posts map[string]*Post) {
 
 	router.HandleFunc("/api", HandlePostUpdate(posts))
 	router.HandleFunc("/api/stop", HandleStop(posts))
+	router.HandleFunc("/api/regenerate", HandleRegenerateHTML(posts))
 
 	if err := http.ListenAndServe(":9000", router); err != nil {
 		logrus.WithError(err).Fatal("error starting http listener")
@@ -273,7 +276,7 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		if err := downloadPost(*post); err != nil {
+		if err := updatePost(*post); err != nil {
 			logrus.WithField("post", post).Error("Failed to download drive file after update")
 		}
 
@@ -281,10 +284,27 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 	}
 }
 
-func downloadPost(post Post) error {
+func updatePost(post Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
+	var err error
+	post.postPath, post.imagePath, err = downloadPost(post, log)
+	if err != nil {
+		log.WithError(err).Error("Error downloading post from google drive")
+		return err
+	}
+
+	if err := generateHTML(post, true, log); err != nil {
+		log.WithError(err).Error("Error updating html for post")
+		return err
+	}
+
+	return nil
+}
+
+// downloads input Post and returns the path to the download post, and the image path
+func downloadPost(post Post, log *logrus.Entry) (string, string, error) {
 	postDirectory := fmt.Sprintf("/home/grish/html/drive/%s/%s", post.Author, post.Date)
 
 	/******************************
@@ -301,7 +321,7 @@ func downloadPost(post Post) error {
 		body, err := downloadDriveFile(post.FileID, post.MimeType)
 		if err != nil {
 			log.WithError(err).Error("Error downloading post")
-			return err
+			return "", "", err
 		}
 
 		log.WithField("postPath", postPath).Info("Saving post file locally")
@@ -310,19 +330,19 @@ func downloadPost(post Post) error {
 		exists, err := pathExists(postDirectory)
 		if err != nil {
 			log.WithError(err).Error("Error checking whether post directory exists")
-			return err
+			return "", "", err
 		}
 		if !exists {
 			if err := os.MkdirAll(postDirectory, os.ModePerm); err != nil {
 				log.WithError(err).Error("Error creating post directory")
-				return err
+				return "", "", err
 			}
 		}
 
 		// save post file
 		if err := ioutil.WriteFile(postPath, body, 0664); err != nil {
 			log.WithError(err).Error("Error saving post to local file")
-			return err
+			return "", "", err
 		}
 	}
 
@@ -330,30 +350,45 @@ func downloadPost(post Post) error {
 	* ensure cover image exists *
 	*****************************/
 
-	imagePath := fmt.Sprintf("%s/%s", postDirectory, post.image.Name)
 	// imageDownloaded := false
+	imagePath := fmt.Sprintf("%s/%s", postDirectory, post.image.Name)
 	{
 		exists, err := pathExists(imagePath)
 		if err != nil {
 			log.WithError(err).Error("Error checking whether post directory exists")
-			return err
+			return "", "", err
 		}
 		if !exists {
 			log.WithField("imagePath", imagePath).Info("Downloading post image")
 			body, err := downloadDriveFile(post.image.Id, post.image.MimeType)
 			if err != nil {
 				log.WithError(err).Error("Error downloading post")
-				return err
+				return "", "", err
 			}
 
 			// save image file
 			if err := ioutil.WriteFile(imagePath, body, 0664); err != nil {
 				log.WithError(err).Error("Error saving image file")
-				return err
+				return "", "", err
 			}
 
 			// imageDownloaded = true
 		}
+	}
+
+	return postPath, imagePath, nil
+}
+
+// generate html for the input Post, given the paths where the post and its image are stored
+func generateHTML(post Post, createThumbnail bool, log *logrus.Entry) error {
+	// ensure post and image paths are defined
+	if post.postPath == "" {
+		err := fmt.Errorf("Missing path to post to generate post's html")
+		return err
+	}
+	if post.imagePath == "" {
+		err := fmt.Errorf("Missing image path to create post thumbnail")
+		return err
 	}
 
 	/*****************************************
@@ -382,7 +417,7 @@ func downloadPost(post Post) error {
 	{
 		var args []string
 		args = append(args, "/home/grish/html/bin/convert_posts.zsh", "post")
-		args = append(args, postPath, htmlDirectory)
+		args = append(args, post.postPath, htmlDirectory)
 
 		log.WithField("cmd", strings.Join(args, " ")).Info("Running script to update post html from docx")
 
@@ -403,10 +438,10 @@ func downloadPost(post Post) error {
 	* if we downloaded a new cover image, generate thumbnails *
 	**********************************************************/
 
-	{
+	if createThumbnail {
 		var args []string
 		title := strings.TrimSuffix(post.FileName, filepath.Ext(post.FileName))
-		args = append(args, "/home/grish/html/bin/make_thumbnail.zsh", title, post.Author, imagePath, htmlDirectory)
+		args = append(args, "/home/grish/html/bin/make_thumbnail.zsh", title, post.Author, post.imagePath, htmlDirectory)
 
 		log.WithField("cmd", strings.Join(args, " ")).Info("Running script to create thumbnails from cover image")
 
@@ -517,6 +552,22 @@ func downloadDriveFile(fileID string, mimeType string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func HandleRegenerateHTML(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Received request to regenerate HTML")
+
+		status := http.StatusOK
+		for _, post := range posts {
+			if err := generateHTML(*post, false, logrus.WithField("post", post)); err != nil {
+				logrus.WithError(err).Error("Error regenerating HTML for post")
+				status = http.StatusInternalServerError
+			}
+		}
+
+		w.WriteHeader(status)
+	}
 }
 
 func HandleStop(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
