@@ -71,8 +71,8 @@ func main() {
 func subscribeToPosts() (map[string]*Post, error) {
 	logrus.Debug("Getting lists of files to subscribe to")
 	r, err := driveService.Files.List().
-		Q("mimeType = 'application/vnd.google-apps.folder' and trashed = false").
-		PageSize(20).Fields("nextPageToken, files(id, name)").Do()
+		Q("mimeType = 'application/vnd.google-apps.folder' and name = 'attic-posts'").
+		PageSize(1).Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to retrieve file list: %s", err.Error())
 	}
