@@ -203,7 +203,7 @@ func subscribeToPosts() (map[string]*Post, error) {
 
 			posts[returnedChannel.Id] = post
 
-			if err := updatePost(*post); err != nil {
+			if err := updatePost(post); err != nil {
 				logrus.WithError(err).WithField("post", post).Error("Failed to download drive file after subscribing")
 			}
 		}
@@ -276,7 +276,7 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 			"post":    post,
 		}).Debug("Received update notification for post")
 
-		if err := updatePost(*post); err != nil {
+		if err := updatePost(post); err != nil {
 			logrus.WithField("post", post).Error("Failed to download drive file after update")
 		}
 
@@ -284,18 +284,18 @@ func HandlePostUpdate(posts map[string]*Post) func(w http.ResponseWriter, r *htt
 	}
 }
 
-func updatePost(post Post) error {
+func updatePost(post *Post) error {
 	log := logrus.WithField("post", post)
 	log.Info("Downloading post from Google Drive")
 
 	var err error
-	post.postPath, post.imagePath, err = downloadPost(post, log)
+	post.postPath, post.imagePath, err = downloadPost(*post, log)
 	if err != nil {
 		log.WithError(err).Error("Error downloading post from google drive")
 		return err
 	}
 
-	if err := generateHTML(post, true, log); err != nil {
+	if err := generateHTML(*post, true, log); err != nil {
 		log.WithError(err).Error("Error updating html for post")
 		return err
 	}
