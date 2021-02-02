@@ -219,6 +219,7 @@ func startHTTPListener(posts map[string]*Post) {
 	router.HandleFunc("/api", HandlePostUpdate(posts))
 	router.HandleFunc("/api/stop", HandleStop(posts))
 	router.HandleFunc("/api/regenerate", HandleRegenerateHTML(posts))
+	router.HandleFunc("/api/regeneratethumbnails", HandleRegenerateThumbnails(posts))
 
 	if err := http.ListenAndServe(":9000", router); err != nil {
 		logrus.WithError(err).Fatal("error starting http listener")
@@ -562,6 +563,22 @@ func HandleRegenerateHTML(posts map[string]*Post) func(w http.ResponseWriter, r 
 		for _, post := range posts {
 			if err := generateHTML(*post, false, logrus.WithField("post", post)); err != nil {
 				logrus.WithError(err).Error("Error regenerating HTML for post")
+				status = http.StatusInternalServerError
+			}
+		}
+
+		w.WriteHeader(status)
+	}
+}
+
+func HandleRegenerateThumbnails(posts map[string]*Post) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Received request to regenerate HTML and thumbnails")
+
+		status := http.StatusOK
+		for _, post := range posts {
+			if err := generateHTML(*post, true, logrus.WithField("post", post)); err != nil {
+				logrus.WithError(err).Error("Error regenerating HTML and thumbnails for post")
 				status = http.StatusInternalServerError
 			}
 		}
